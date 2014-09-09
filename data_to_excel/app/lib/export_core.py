@@ -3,7 +3,7 @@
 import MySQLdb
 from lib_common import MyBaseClass
 from db_core import MyDBClass
-import os,sys,xlsxwriter,gzip,time,tarfile
+import os,sys,xlsxwriter,gzip,time,tarfile,datetime
 from send_mail import Send_Email
 
 
@@ -48,6 +48,7 @@ class MyExportClass():
               sqldetail = self.get_sql_value(sql_file)
               #通过sql语句得出查询结果
               result = self.deal_sql(sqldetail,0)
+              print result
               #写入excel
               self.deal_excel(data_dir,filename,result)
         else:
@@ -115,7 +116,7 @@ class MyExportClass():
         #     list2 = []
 
         #添加列名
-        red = workbook.add_format({'color': 'red'})
+        red = workbook.add_format({'color': 'red','bold': True})
 
         i = 0
         for value in data['field_names']:
@@ -127,6 +128,8 @@ class MyExportClass():
         #添加数值
         for row_data in data['returnData']:
             for col_data in row_data:
+                if type(col_data) == datetime.datetime:
+                    col_data = col_data.strftime("%Y-%m-%d %H:%M:%S")
                 worksheet.write(j,col,col_data)
                 col = col + 1
             j = j + 1

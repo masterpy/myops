@@ -1,0 +1,11 @@
+[one]
+title = first_data
+sql_file = data/sql_dir/2014-08-20_tms_2233_first_data.sql
+filename = tms_2233_first_data.xlsx
+database_name = tms_new
+sn = one
+jira_case = tms_2233
+subject = 2014-08-20_first_data
+excel_data_dir = data/export_dir
+zip_password = "jr123456"
+
