@@ -110,10 +110,12 @@ class MyDBClass():
 
     def Query(self,sql_str="",tag=0):
         if tag == 0:
-            self.cursor = self.conn.cursor(cursorclass=MySQLdb.cursors.DictCursor)
+            self.cursor = self.conn.cursor()
             self.cursor.execute(sql_str)
             returnData = self.cursor.fetchall()
-            return returnData
+            field_names = [i[0] for i in self.cursor.description]
+            return {'field_names':field_names,
+                    'returnData':returnData}
         else:
             self.cursor.close()
             self.conn.close()

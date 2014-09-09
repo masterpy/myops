@@ -1,13 +1,13 @@
 SELECT
-d.dept_manage_area_name AS 管理区域,
-jrc.class_campus_name AS 分校,
-jrc.class_gt_name 年部,
-jrc.class_grade_name 年级,
-jrc.class_subject_name 学科,
-jrc.class_profit_name 利润中心,
-jrc.class_no AS 班号,
-jrc.class_name AS 班名,
-jrc.class_year 年份,
+d.dept_manage_area_name AS GuanLiQuYu,
+jrc.class_campus_name AS FenXiao,
+jrc.class_gt_name NianBu,
+jrc.class_grade_name NianJi,
+jrc.class_subject_name Xueke,
+jrc.class_profit_name LiRun,
+jrc.class_no AS BanHao,
+jrc.class_name AS BanMing,
+jrc.class_year NianFen,
 jrc.class_season_name 季节,
 jrc.class_total_num 总课次,
 jrc.class_past_num 已上课次,
@@ -32,4 +32,5 @@ and jrc.class_name like '%剑桥英语3级下册%'
 and jrc.class_business_type=0
 AND reg.reg_is_delete=0 AND reg.reg_state=0 AND reg.reg_payed=1
 group by reg.reg_class_id
+limit 2
 

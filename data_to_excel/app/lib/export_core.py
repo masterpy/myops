@@ -14,7 +14,8 @@ class MyExportClass():
         self.db_name = db_name
         self.dbconfig = MyBaseClass(self.filename)
         self.mydbclass = MyDBClass(self.db_name,self.dbfile_dir)
-        self.one_option = self.dbconfig.get_min_value() #获取export.ini 的首个选项配置
+        if len(db_name) > 0:
+            self.one_option = self.dbconfig.get_min_value() #获取export.ini 的首个选项配置
         self.process_num = 5 #定义线程的数量
 
     #重新生成配置文件
@@ -30,6 +31,7 @@ class MyExportClass():
 
     #处理数据配置信息
     def deal_export_conf(self,item):
+
         mail_list = {}
         title = item['title']
         sql_file = item['sql_file']
@@ -102,28 +104,28 @@ class MyExportClass():
         file_name = os.path.join(data_dir,filename)
         workbook = xlsxwriter.Workbook(file_name)
         worksheet = workbook.add_worksheet()
-        for i in data:
-            for key,value in i.items():
-                if key in list1:
-                    pass
-                else:
-                    list1.append(key)
-                list2.append(value)
-            list3.append(list2)
-            list2 = []
+        # for i in data['field_names']:
+        #     for key,value in i.items():
+        #         if key in list1:
+        #             pass
+        #         else:
+        #             list1.append(key)
+        #         list2.append(value)
+        #     list3.append(list2)
+        #     list2 = []
 
         #添加列名
         red = workbook.add_format({'color': 'red'})
 
         i = 0
-        for value in list1:
-            #worksheet.write(0,i,value.decode('utf-8'))
+        for value in data['field_names']:
+            #worksheet.write(0,i,value.deco  de('utf-8'))
             worksheet.write_rich_string(0,i,red,value.decode('utf-8'))
             i = i + 1
         j = 1
         col = 0
         #添加数值
-        for row_data in list3:
+        for row_data in data['returnData']:
             for col_data in row_data:
                 worksheet.write(j,col,col_data)
                 col = col + 1

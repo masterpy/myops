@@ -21,9 +21,9 @@ def main():
     mydbclass = MyDBClass()
     logfile = "/tmp/exportlog.log"
     errorlog = "/tmp/exporterror.log"
-    process_num = 5 #进程数
+    process_num = 1 #进程数
     myrecordlog = Record_daemon(stdout=logfile)
-    myrecordlog.daemonize() #重定向描述符
+ #   myrecordlog.daemonize() #重定向描述符
 
     parser.add_option("-i","--init",action="store",dest="init_data",default="",help="初始化配置 -i db 初始化数据库配置 -i case 初始化提案配置，需要和-m 一起使用!".decode('utf-8'))
     parser.add_option("-c","--config",action="store",dest="load_data",default="",help="加载数据导出配置文件,需要和-s 一起使用".decode('utf-8'))
@@ -67,4 +67,5 @@ def main():
                 print "Please input args like \"-i db\" or \" -i case\""
     else:
         parser.print_help()
+
 main()
