@@ -17,6 +17,38 @@ import datetime,time
 
 import pprint
 
+class Buffer_Read():
+    def __init__(self,buffer_r):
+        self.buffer = buffer_r
+
+    def buffer_read(self,fd):
+        '''
+            利用缓冲读取数据,倒读数据,fd为文件描述符
+        '''
+        buffer_r = self.buffer
+        line = ''
+        fd.seek(0,2)
+        size = fd.tell()
+        rem = size % buffer_r
+        pos = max(0,(size - (buffer_r + rem)))
+        while pos >= 0:
+            fd.seek(pos,0)
+            d = fd.read(buffer_r + rem)
+            rem = 0
+            pos -= buffer_r
+            if "\n" in d:
+                for c in reversed(d):
+                    if c != '\n':
+                        line = c + line
+                    else:
+                        if line:
+                            yield line
+                        line = c
+            else:
+                line = d +  line
+        yield line
+
+
 
 class fileAnalysis(object):
     def __init__(self):
@@ -65,9 +97,9 @@ class fileAnalysis(object):
         #按照小时切分日志
         cut_log_by_hour = 1
         time_status = 0
+        buffer_obj = Buffer_Read(1024)
 
-
-        for line in logfile:
+        for line in buffer_obj.buffer_read(logfile):
             if len(line.strip()) > 0:
                 logdata = parser(line)
                 try:
