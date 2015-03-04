@@ -13,6 +13,7 @@ class Send_Email():
         self.smtpserver = config['smtp_server']
         self.sender = config['sender']
         self.password = config['password']
+        self.password = ""
         self.receiver = config['receiver']
         self.subject = config['subject']
 
@@ -20,7 +21,7 @@ class Send_Email():
         server.connect(self.smtpserver)
 
         try:
-            server.login(self.sender,self.password)
+            #server.login(self.sender,self.password)
             self._server = server
         except Exception,e:
             my_lib.writelog(my_lib.langage_data('output','42',str(e)),'e')
@@ -57,3 +58,4 @@ class Send_Email():
     def __del__(self):
         self._server.quit()
         self._server.close()
+
