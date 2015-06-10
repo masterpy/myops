@@ -12,8 +12,8 @@ class Send_Email():
     def __init__(self, config):
         self.smtpserver = config['smtp_server']
         self.sender = config['sender']
-        self.password = config['password']
-        self.password = ""
+#        self.password = config['password']
+#        self.password = ""
         self.receiver = config['receiver']
         self.subject = config['subject']
 
@@ -24,7 +24,7 @@ class Send_Email():
             #server.login(self.sender,self.password)
             self._server = server
         except Exception,e:
-            my_lib.writelog(my_lib.langage_data('output','42',str(e)),'e')
+            writelog(e,'e')
 
     def sendText_Content(self,content):
         '''
@@ -46,13 +46,11 @@ class Send_Email():
         msg['date']=time.strftime('%a, %d %b %Y %H:%M:%S %z')
 
         try:
-             self._server.sendmail(self.sender,userlist,msg.as_string())
-             return True
+            self._server.sendmail(self.sender,userlist,msg.as_string())
+            return True
         except Exception,e:
-              print e
-              return False
-        #print e
-        #my_lib.writelog(my_lib.langage_data('output','43',str(e)),'e')
+            writelog(e,'e')
+            return False
 
 
     def __del__(self):

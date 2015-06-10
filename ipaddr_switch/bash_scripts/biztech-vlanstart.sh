@@ -30,22 +30,26 @@ do
 	flag="0"
 	tmp_ip=`cat ${dir}"/"${net} | grep IPADDR | awk  -F= '{print $2}'`
 	for ip in $local_ip
-	do
-		if [ "${tmp_ip}" = "${ip}" ];then
+	do   
+	    echo "tmp_ip is:",$tmp_ip
+	    echo "ip is:",$ip
+		if [ "${tmp_ip}" == "${ip}" ];then
 			flag="1"
-			ifup $net
+			echo "ifup $net" >> /var/1.txt
+			ifup $net >> /var/1.txt
 		fi
 	done
-	if [ ${flag} = "0" ];then #未启动的网络设备，检查IP能否ping通，不通则启用此设备
+	if [ ${flag} == "0" ];then #未启动的网络设备，检查IP能否ping通，不通则启用此设备
 		tmp_device=`cat ${dir}"/"${net} | grep DEVICE | awk  -F= '{print $2}'`
 		flag_route1="1"
-		ping -c 2 $tmp_ip
+		ping -c 2 $tmp_ip  >> /var/1.txt 
 		if [ "$?" != "0" ];then
-			ifup $tmp_device
-			flag_route="1"
+			ifup $tmp_device   >> /var/1.txt 
+			flag_route="1" 
 		fi
 	fi
 done
+
 if [ "$flag_route" = "1" ];then #新启用设备，删除实际IP路由。
 	route_del
 elif [ ${net_num} > 3 -a "${flag_route1}" = "0" ];then #VLANIP已绑定在本机，并且不是通过此次脚本中启用的，删除实际IP路由。

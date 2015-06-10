@@ -1,5 +1,5 @@
 #!/bin/bash
-file=$(find .. -path "../bash_scripts" -a -prune  -o -name "*.py" -print | grep -v "__init__.py")
+file=$(find .. -path "../bash_scripts" -a -prune  -o -name "*.py" -print -o -name "*.conf" -print | grep -v "__init__.py")
 mkdir -p temp/libs/
 for i in $file
 do
