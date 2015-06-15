@@ -105,16 +105,16 @@ function check_ip()
 	
         if [ ${OPT} == "ms" ];then
             echo "$SHOSTNAME $RUNNING_eth0 $STANDBY_eth0 $STANDBY_eth1"
-		ssh 10.134.33.223 "puppet cert -c $SHOSTNAME_ALL"
         	modify_ip 20 $SHOSTNAME $RUNNING_eth0 $STANDBY_eth0 $STANDBY_eth1 $SHOSTNAME_ALL $MHOSTNAME_ALL
+		ssh 10.134.33.223 "puppet cert -c $SHOSTNAME_ALL"
 		reconnect_server $STANDBY_eth0
             echo "$MHOSTNAME $STANDBY_eth0 $RUNNING_eth0 $RUNNING_eth1"
-		ssh 10.134.33.223 "puppet cert -c $MHOSTNAME_ALL"
         	modify_ip 5  $MHOSTNAME $STANDBY_eth0 $RUNNING_eth0 $RUNNING_eth1 $MHOSTNAME_ALL $SHOSTNAME_ALL
+		ssh 10.134.33.223 "puppet cert -c $MHOSTNAME_ALL"
 		reconnect_server $RUNNING_eth0
 
 	elif [ ${OPT} == "s" ] ;then
-		ssh 10.134.33.223 "puppet cert -c $MHOSTNAME_ALL"
         	modify_ip 5 $MHOSTNAME $STANDBY_eth0 $RUNNING_eth0 $RUNNING_eth1 $MHOSTNAME_ALL $SHOSTNAME_ALL
+		ssh 10.134.33.223 "puppet cert -c $MHOSTNAME_ALL"
                 reconnect_server $RUNNING_eth0
 	fi

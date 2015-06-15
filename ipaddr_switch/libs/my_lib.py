@@ -12,6 +12,7 @@ from IPy import IP
 import pprint
 import getpass
 import logging.handlers
+from progressbar import AnimatedMarker,FormatLabel,ReverseBar,ProgressBar
 
 class Public_tool(object):
     def __init__(self):
@@ -27,22 +28,20 @@ class Public_tool(object):
         self.host_id = {}.fromkeys(['id','is_vlanip'],None)
         self.host_info = {}.fromkeys(['isvirtual','sipbusi','sipdata','shostname','mipbusi','mipdata','mhostname','mc','vipbusi','vipdata'],None)
 
-
-    #计时器
-    def timer_progress(self,tag='no_end'):
-        num = 60
-        if  tag == 'end':
-            return True
-        while(num > 0):
-            sys.stdout.flush()
-            sys.stdout.write("\b"*1000)
-            sys.stdout.write("Time Left: %d seconds Will Stop!" % num)
-            sys.stdout.flush()
-            num = num - 1
-            time.sleep(1)
-
-        writelog(langage_data('output','54'),'e')
-
+    def timer_progress(self,e):
+        '''
+            进度条
+        '''
+        print "\n"
+        widgets = ['Working: ', AnimatedMarker(),"  ||",FormatLabel('Processed:  %(elapsed)s s')]
+        pbar = ProgressBar(widgets=widgets, maxval=15000).start()
+        for i in range(15000):
+            time.sleep(0.01)
+            pbar.update(10*i+1)
+            if e.is_set():
+                break
+        #pbar.finish()
+        return
 
     def get_hostinfo_by_ip(self,url,real_ip,vlan_ip):
         '''
@@ -51,12 +50,12 @@ class Public_tool(object):
         server_vertify_data = self.get_url_data(url)
         if not server_vertify_data:
             return False
-
+        #pprint.pprint(server_vertify_data)
         if  server_vertify_data['success'] == 'true':
             for data in server_vertify_data['message']:
                 if real_ip in data.values():
                     self.host_info['isvirtual'] = data.get('isxen')
-                    self.host_info['service'] = ""
+                    self.host_info['service'] = "未配置"
                     self.host_info['mipbusi'] = data.get('busi_ip')
                     self.host_info['mipdata'] = data.get('data_ip')
                     self.host_info['mc'] = data.get('isxen')
@@ -66,7 +65,7 @@ class Public_tool(object):
                     self.host_info['vipdata'] = data.get('data_ip')
                     self.host_info['master_sn'] = data.get('serialid')
             return self.host_info
-        writelog("server_vertify_data['success'] 获取信息失败!",'e')
+        writelog("模块不存在，无法获取信息!",'e')
         return False
 
 
@@ -117,7 +116,7 @@ class Public_tool(object):
                 return False
 
         else:
-            writelog("server_vertify_data['success'] 获取信息失败!",'e')
+            writelog("模块不存在，无法获取信息!",'e')
             return False
 
 
