@@ -15,7 +15,65 @@ class Generate_ipaddr(object):
         生成ifcfg-ethX配置并配置相关ipv4地址
     '''
     def  __init__(self,device_type):
-        self.device_type = device_type
+        self.device_type = int(device_type)
+
+
+    def diff_data_bussi(self,ipdata):
+        '''
+            根据已配置的ip地址 找到数据网和业务网网卡名称
+        '''
+        temp_dic1 = {}
+        temp_dic2 = {}
+        temp_dic3 = {}
+        temp_dic4 = {}
+
+        if len(ipdata) > 0:
+            for key,value in ipdata.items():
+                for name,info in value.items():
+                    if 'config_ipaddress' in name:
+                        temp_dic1[key] = info
+                    if 'alive_ipaddress'  in name:
+                        temp_dic4[key] = info 
+
+            for key1,value1 in temp_dic1.items():
+                for  key4,value4 in temp_dic4.items():
+                    if temp_dic1[key] == None and temp_dic4[key] != None:
+                        print "adapter info is Erorr!"
+                        sys.exit(1)
+
+            for name in temp_dic1:
+                temp_dic2[name[3:]] = name
+
+            keys = temp_dic2.keys()
+            keys.sort()
+            temp_dic3 = map(temp_dic2.get,keys)
+
+        if len(temp_dic3) > 2:
+            if int(temp_dic1[temp_dic3[0]].split(".")[1]) < int(temp_dic1[temp_dic3[1]].split(".")[1]):
+                ipdata[temp_dic3[0]]['bussi'] = False
+                ipdata[temp_dic3[1]]['bussi'] = True
+            else:
+                print "adapter info is Erorr!"
+
+            if temp_dic1[temp_dic3[2]] is not None and temp_dic1[temp_dic3[3]] is not None:
+                if int(temp_dic1[temp_dic3[2]].split(".")[1]) < int(temp_dic1[temp_dic3[3]].split(".")[1]):
+                    ipdata[temp_dic3[2]]['v_bussi'] = False
+                    ipdata[temp_dic3[3]]['v_bussi'] = True           
+                else:
+                    print "adapter info is Erorr!"
+            else:
+                ipdata[temp_dic3[2]]['v_bussi'] = False
+                ipdata[temp_dic3[3]]['v_bussi'] = True    
+
+        elif len(temp_dic3) == 2:
+            if int(temp_dic1[temp_dic3[0]].split(".")[1]) < int(temp_dic1[temp_dic3[1]].split(".")[1]):
+                ipdata[temp_dic3[0]]['bussi'] = False
+                ipdata[temp_dic3[1]]['bussi'] = True
+        else:
+            print "adapter num is Erorr!"
+
+        return ipdata
+
 
 
     def get_ipaddr_data(self,vlan_tag_list):
@@ -27,9 +85,10 @@ class Generate_ipaddr(object):
         '''
         ipaddress,netmask,bootproto,onboot = "","","",""
         ifcfg_dic = {}
+        ipdata = {}
         network_config_dir = "/etc/sysconfig/network-scripts"
         for dev_name in lib_net.get_network_interfaces():
-            p = re.compile("usb*|lo*|br*")
+            p = re.compile("usb*|lo*|br*|sit*")
             interface = eval(dev_name.get_data())
             matcher = p.match(interface['device'])
             if matcher:
@@ -37,7 +96,7 @@ class Generate_ipaddr(object):
             else:
                 filename = "ifcfg-%s" % interface['device']
                 device = interface['device']
-                if os.path.exists(os.path.join(network_config_dir,filename)) and interface['IPv4'] != 'None':
+                if os.path.exists(os.path.join(network_config_dir,filename)):
                     with open(os.path.join(network_config_dir,filename),'r')  as f:
                         for line in f.readlines():
                             if line.strip().startswith("IPADDR"):
@@ -51,13 +110,13 @@ class Generate_ipaddr(object):
 
                     ifcfg_dic[device] = {
                     'device': device,
-                    'alive_ipaddress':ipaddress,
+                    'alive_ipaddress':interface['IPv4'],
                     'netmask': netmask,
                     'onboot':onboot,
                     'bootproto':bootproto,
                     'index':interface['index'],
                     'vlan_tag':interface['index'],
-                    'config_ipaddress':interface['IPv4'],
+                    'config_ipaddress':ipaddress,
                     'ifcfg_file':os.path.join(network_config_dir,filename),
                     }
 
@@ -77,29 +136,74 @@ class Generate_ipaddr(object):
                         'ifcfg_file':os.path.join(network_config_dir,filename),
                     }
 
-        if self.device_type == 1:
-            if len(ifcfg_dic) == 2:
+        ipdata = self.diff_data_bussi(ifcfg_dic)
+
+        if int(self.device_type) == 0:
+            if len(ipdata) == 2:
                 ipaddress = None
                 netmask  = None
                 onboot   = None
-                for vlan_tag in vlan_tag_list:
-                    oldfilename = "ifcfg-%s" % interface['device']
-                    device = interface['device'] + "." + str(vlan_tag)
-                    filename =  oldfilename + "." + str(vlan_tag)
-                    ifcfg_dic[device] = {
-                    'device': device,
-                    'config_ipaddress':ipaddress,
-                    'netmask': netmask,
-                    'onboot':"no",
-                    'bootproto':"static",
-                    'index':vlan_tag,
-                    'vlan_tag':vlan_tag,
-                    'alive_ipaddress':interface['IPv4'],
-                    'ifcfg_file':os.path.join(network_config_dir,filename),
-                    }
-        
-        if len(ifcfg_dic) == 4:
-            return ifcfg_dic
+                for name,value in ipdata.items():
+                    for opt,data in value.items():
+                        #print data
+                        if opt == 'bussi' and data:
+                            oldfilename = "ifcfg-%s" % name
+                            if vlan_tag_list[0] > vlan_tag_list[1]:
+                                max_value = vlan_tag_list[0]
+                            elif vlan_tag_list[0] < vlan_tag_list[1]:
+                                max_value = vlan_tag_list[1]
+                            
+
+                            device = name + "." + str(max_value)
+                            filename =  oldfilename + "." + str(max_value)
+
+                            if device in interface['device']:
+                                ipaddress = interface['IPv4']
+
+                            ipdata[device] = {
+                            'device': device,
+                            'config_ipaddress':ipaddress,
+                            'netmask': netmask,
+                            'onboot':"no",
+                            'bootproto':"static",
+                            'index':max_value,
+                            'vlan_tag':max_value,
+                            'alive_ipaddress':ipaddress,
+                            'ifcfg_file':os.path.join(network_config_dir,filename),
+                            'v_bussi':True,
+                            }
+
+                        elif opt == 'bussi' and not data:
+                            oldfilename = "ifcfg-%s" % name
+                            if vlan_tag_list[0] < vlan_tag_list[1]:
+                                min_value = vlan_tag_list[0]
+                            elif vlan_tag_list[0] > vlan_tag_list[1]:
+                                min_value = vlan_tag_list[1]
+                            
+                            
+
+                            device = name + "." + str(min_value)
+                            filename =  oldfilename + "." + str(min_value)
+
+                            if device in interface['device']:
+                                ipaddress = interface['IPv4']
+
+                            ipdata[device] = {
+                            'device': device,
+                            'config_ipaddress':ipaddress,
+                            'netmask': netmask,
+                            'onboot':"no",
+                            'bootproto':"static",
+                            'index':min_value,
+                            'vlan_tag':min_value,
+                            'alive_ipaddress':ipaddress,
+                            'ifcfg_file':os.path.join(network_config_dir,filename),
+                            'v_bussi':False,
+                            }
+
+
+        if len(ipdata) == 4:
+            return ipdata
         else:
             return  False
 
@@ -114,46 +218,10 @@ class Generate_ipaddr(object):
         temp_list = []
         netface_value = {}
         new_interface = {}
+
         ifcfg_data = self.get_ipaddr_data(vlan_tag_list)
-        if ifcfg_data:
-            for name,if_data in ifcfg_data.items():
-                index = if_data['index']
-                netface_value[index] = if_data['device']
-        else:
-            print "adapter num is Erorr!"
 
-        for key,value in  netface_value.items():
-            temp_list.append(key)
-
-        max_v = max(temp_list)
-        min_v = min(temp_list)
-
-        for i in temp_list:
-            for j in temp_list:
-                    if j == max_v:
-                        #print "j == max_v j:%d" % j
-                        name = netface_value[j]
-                        new_interface[name] = ifcfg_data[name]
-                        ifcfg_data[name]['v_bussi'] = True
-                    elif j < max_v and j > min_v and j < i and i != max_v:
-                        #print "j < max_v and j > min_v and j > i j:%d" % j
-                        name = netface_value[j]
-                        new_interface[name] = ifcfg_data[name]
-                        ifcfg_data[name]['bussi'] = True
-                        
-                    elif j == min_v:
-                        #print "j == min_v j:%d" % j
-                        name = netface_value[j]
-                        new_interface[name] = ifcfg_data[name]
-                        ifcfg_data[name]['bussi'] = False
-                        
-                    elif j < max_v and j > min_v and j > i and i != min_v :
-                        #print "j < max_v and j > min_v and j < i j:%d" % j
-                        name = netface_value[j]
-                        new_interface[name] = ifcfg_data[name]
-                        ifcfg_data[name]['v_bussi'] = False
-                        
-        return new_interface
+        return ifcfg_data
 
 
     def get_sogou_vlan_info(self,iplist):
@@ -178,12 +246,16 @@ class Generate_ipaddr(object):
                         sogou_vlan_info['v_bussi'] = True
                     else:
                         sogou_vlan_info['v_bussi'] = False
-                    result_data.append(sogou_vlan_info)
+
+                    if sogou_vlan_info not in result_data:
+                        result_data.append(sogou_vlan_info)
+  
                     sogou_vlan_info = {}
                 else:
                     continue
 
         return  result_data
+
 
     def set_ipaddr_data(self,vlan_ip_dic):
         '''
@@ -193,6 +265,7 @@ class Generate_ipaddr(object):
         sogou_vlan_info = self.get_sogou_vlan_info(vlan_ip_dic)
 
         new_adapter_info = self.find_new_interface([sogou_vlan_info[0]['tag'],sogou_vlan_info[1]['tag']])
+   
         num = str(random.random())[3:11]
         
         for name,adapter_info in new_adapter_info.items():
@@ -201,8 +274,13 @@ class Generate_ipaddr(object):
                     if (adapter_info['v_bussi'] and net_info['v_bussi']) or (not adapter_info['v_bussi'] and not net_info['v_bussi']):
                         adapter_info['config_ipaddress'] = net_info['ipaddress']
                         adapter_info['netmask'] = net_info['netmask']
-                        new_adapter_config = "DEVICE=%(device)s\nIPADDR=%(ipaddress)s\nNETMASK=%(netmask)s\nONBOOT=%(onboot)s\nBOOTPROTO=%(bootproto)s\n" % {'device':adapter_info['device'],'ipaddress':adapter_info['config_ipaddress'],'netmask':adapter_info['netmask'],'onboot':adapter_info['onboot'],'bootproto':adapter_info['bootproto']}
-                        
+
+                        if int(self.device_type) == 1:
+                            new_adapter_config = "DEVICE=%(device)s\nIPADDR=%(ipaddress)s\nNETMASK=%(netmask)s\nONBOOT=%(onboot)s\nBOOTPROTO=%(bootproto)s\n" % {'device':adapter_info['device'],'ipaddress':adapter_info['config_ipaddress'],'netmask':adapter_info['netmask'],'onboot':adapter_info['onboot'],'bootproto':adapter_info['bootproto']}
+
+                        elif int(self.device_type) == 0:
+                            new_adapter_config = "DEVICE=%(device)s\nIPADDR=%(ipaddress)s\nNETMASK=%(netmask)s\nONBOOT=%(onboot)s\nBOOTPROTO=%(bootproto)s\nISALIAS=%(isalias)s\nVLAN=%(vlan)s\n" % {'device':adapter_info['device'],'ipaddress':adapter_info['config_ipaddress'],'netmask':adapter_info['netmask'],'onboot':adapter_info['onboot'],'bootproto':adapter_info['bootproto'],'isalias':'yes','vlan':'yes'}
+
                         if os.path.exists(adapter_info['ifcfg_file']):
                             shutil.move(adapter_info['ifcfg_file'],'/tmp/%s' % (os.path.basename(adapter_info['ifcfg_file'] + "-" +num)))
                         with open(adapter_info['ifcfg_file'],'w') as f:
@@ -272,7 +350,6 @@ class Generate_route(Generate_ipaddr):
                         rule_data['route_table_num'] = table_num
                         rule_data = {}
 
-        #pprint.pprint(rule_info)
         return rule_info
         
     def get_main_route_data(self):
