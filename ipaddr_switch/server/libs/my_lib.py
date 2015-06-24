@@ -10,7 +10,7 @@ from ConfigParser import ConfigParser
 import send_mail
 from IPy import IP
 import pprint
-import getpass
+import getpass,re
 import logging.handlers
 from progressbar import AnimatedMarker,FormatLabel,ReverseBar,ProgressBar
 
@@ -28,20 +28,32 @@ class Public_tool(object):
         self.host_id = {}.fromkeys(['id','is_vlanip'],None)
         self.host_info = {}.fromkeys(['isvirtual','sipbusi','sipdata','shostname','mipbusi','mipdata','mhostname','mc','vipbusi','vipdata'],None)
 
+
+    def ipFormatChk(self,ip_str):
+        '''
+            ip合法性检查
+        '''
+        pattern = r"\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"
+
+        if re.match(pattern, ip_str):
+            return True
+        else:
+            return False
+
     def timer_progress(self,e):
         '''
             进度条
         '''
         print "\n"
         widgets = ['Working: ', AnimatedMarker(),"  ||",FormatLabel('Processed:  %(elapsed)s s')]
-        pbar = ProgressBar(widgets=widgets, maxval=15000).start()
-        for i in range(15000):
+        pbar = ProgressBar(widgets=widgets, maxval=20000).start()
+        for i in range(20000):
             time.sleep(0.01)
             pbar.update(10*i+1)
             if e.is_set():
-                break
-        #pbar.finish()
-        return
+                return
+        pbar.finish()
+        sys.exit(1)
 
     def get_hostinfo_by_ip(self,url,real_ip,vlan_ip):
         '''
@@ -59,7 +71,7 @@ class Public_tool(object):
                     self.host_info['mipbusi'] = data.get('busi_ip')
                     self.host_info['mipdata'] = data.get('data_ip')
                     self.host_info['mc'] = data.get('isxen')
-                    
+
                 elif vlan_ip in data.values():
                     self.host_info['vipbusi'] = data.get('busi_ip')
                     self.host_info['vipdata'] = data.get('data_ip')
@@ -75,11 +87,12 @@ class Public_tool(object):
         '''
         num = 0
         server_vertify_data = self.get_url_data(url)
+        
         if not server_vertify_data:
             return False
 
         if  server_vertify_data['success'] == 'true':
-            if len(server_vertify_data['message']) <= 3:
+            if len(server_vertify_data['message']) <= 3 and len(server_vertify_data['message']) > 1:
                 #只支持1主1备
                 for value in server_vertify_data['message']:
                     self.host_info['isvirtual'] = value.get('isvirual')
@@ -101,7 +114,7 @@ class Public_tool(object):
                         self.host_info['master_sn'] = value.get('serialid')
                         num = num + 1
                     elif value.get('type') == "2":
-                        #2 表示vlan 
+                        #2 表示vlan
                         self.host_info['vipbusi'] = value.get('ipbusi')
                         self.host_info['vipdata'] = value.get('ipdata')
                         num = num + 1
@@ -112,7 +125,7 @@ class Public_tool(object):
                 else:
                     return False
             else:
-                writelog("\033[1;31;40m**Error**\033[0m 非一主一备模式,此脚本不支持!\n",'e')
+                writelog("\033[1;31;40m**Error**\033[0m 非法参数，请重新输入!\n",'e')
                 return False
 
         else:
@@ -125,12 +138,14 @@ class Public_tool(object):
             依据ip地址，获取idc名称
             busi_ip: 主机业务网网卡ip(非vlan ip)
         '''
+        if real_ip is None:
+            return False
 
         if len(real_ip) == 0:
             return False
 
         real_ip_net = ".".join(IP(real_ip).strNormal().split('.')[:-2])
-            
+
         for pool in self.iplists:
             if str(pool['busi_ip']) == str(real_ip_net):
                 return pool['name']
@@ -142,19 +157,23 @@ class Public_tool(object):
         port = 22
         username = 'root'
         key_file = "/root/.ssh/id_rsa"
+
         try:
             private_key = paramiko.RSAKey.from_private_key_file(key_file)
             client = paramiko.SSHClient()
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             client.connect(hostname = ip, username =username, password='',pkey = private_key)
-            stdin,stdout,sterr = client.exec_command(command,timeout = 10)
+            stdin,stdout,sterr = client.exec_command(command,timeout = 15)
             result = stdout.read()
             error  = sterr.read()
             client.close()
-            return result,error
 
         except Exception,e:
             writelog(e,'e')
+            sys.exit(1)
+        else:
+            return result,error
+
 
     def ssh_check(self,ip):
         cmd = "ssh -o ConnectTimeout=3 %s 'hostname'"%(ip)
@@ -205,7 +224,7 @@ class Public_tool(object):
         else:
             writelog(server_data["message"],'e')
             return False
-    
+
     def send_email(self,content):
         '''
             发送邮件
@@ -247,7 +266,7 @@ def writelog(string,tag):
     username = getpass.getuser()
     log_time = time.strftime("%Y_%m_%d",time.localtime())
     now_dir = os.path.join(os.path.split(os.path.dirname(__file__))[0],'logs')
-    
+
     if not os.path.exists(now_dir):
         os.makedirs(now_dir)
 
@@ -282,7 +301,7 @@ def writelog(string,tag):
 
 
 
-def langage_data(src,tag,*args):  
+def langage_data(src,tag,*args):
             if len(args) == 2:
                 out_data_two = {
                 '6' : '手工输入的:\n\nvlan ip信息如下:\n\n vlan ip的业务网地址: \033[1;32;40m %s\033[0m\n\n vlan ip的数据网地址: \033[1;32;40m %s\033[0m\n\n' % args,
@@ -296,7 +315,7 @@ def langage_data(src,tag,*args):
                     '1' : '''主机信息如下:\n\n 服务器类型: \033[1;32;40m %s\033[0m;\n\n 服务器的业务网ip地址: \033[1;32;40m %s\033[0m  网络:  %s \n\n 服务器的数据网ip地址: \033[1;32;40m %s\033[0m  网络:  %s \n\n 服务器所在机房: \033[1;32;40m%s\033[0m\n\n vlan ip所在业务网状态: %s \n\n vlan ip所在数据网状态: %s \n\n vlan ip 配置如下: %s / %s \n\n''' % args,
                     '2' : '''备机信息如下:\n\n 服务器类型: \033[1;32;40m %s\033[0m;\n\n 服务器的业务网ip地址: \033[1;32;40m %s\033[0m  网络:  %s \n\n 服务器的数据网ip地址: \033[1;32;40m %s\033[0m  网络:  %s \n\n 服务器所在机房: \033[1;32;40m%s\033[0m\n\n vlan ip所在业务网状态: %s \n\n vlan ip所在数据网状态: %s \n\n vlan ip 配置如下: %s / %s \n\n''' % args,
                     '3' : '''bizop平台获取到的信息如下:\n\n 模块名称:\033[1;32;40m %s\033[0m;\n\n 服务器(主机)的业务网ip地址: \033[1;32;40m %s\033[0m\n\n 服务器(主机)的数据网ip地址: \033[1;32;40m %s\033[0m\n\n 服务器(备机)的业务网ip地址: \033[1;32;40m %s\033[0m\n\n 服务器(备机)的数据网ip地址: \033[1;32;40m %s\033[0m\n\n vlan ip配置信息:\033[1;32;40m %s/%s \033[0m\n\n %s %s %s''' % args
- 
+
             }
                 print  out_data_ten[tag]
                 return out_data_ten[tag]

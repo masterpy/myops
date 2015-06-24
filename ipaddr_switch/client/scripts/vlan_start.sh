@@ -307,6 +307,25 @@ function stop_daemon()
     echo "The Vlan Network has been Deleted!"
 }
 
+function restart_dev()
+{
+    cat $vlan_stats_file | while read line
+    do
+        vdev=$(echo $line | grep "v_device_list" | cut -d ":" -f2)
+        if [ "$vdev" != "" ]
+        then
+            for dev in $vdev
+            do
+                ifdown $dev 2>&1 
+            done
+        else
+            continue 
+        fi
+    done
+
+} 
+
+
 function main()
 {
     DESC="vlan ip network"
@@ -325,8 +344,8 @@ function main()
     ;;
     restart)
     echo -e "Restarting $DESC\n"
+    restart_dev
     start_daemon_no_ver
-    stop_daemon
     ;;
     *)
     echo -e "Usage: $SCRIPTNAME {start|stop|restart}\n" >&2

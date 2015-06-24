@@ -34,7 +34,7 @@ class Deploy_vlan_ip(object):
         while True:
             try:
                 mode_name = raw_input("\n【相关Module Name可以在bizop平台(http://bizop.sogou-inc.com)进行查询】\n **请输入模块名称**  >>")
-                mode_name = "centre-dubhe"
+                #mode_name = "centre-dubhe"
                 # my_lib.writelog("\n【相关Mode Name可以在bizop平台(http://bizop.sogou-inc.com)进行查询】\n **请输入模块名称** >>",'i',False)
                 if mode_name.strip() == "":
                     continue
@@ -46,8 +46,16 @@ class Deploy_vlan_ip(object):
                         sys.exit(1)
             except KeyboardInterrupt:
                 sys.exit(1)
-            
+
+
+            if self.tool.ipFormatChk(mode_name.strip()):
+                my_lib.writelog("\033[1;31;40m**Error**\033[0m 输入的模块名非法!\n",'e')
+                continue
+            else:
+                pass
+
             host_info = self.get_info_by_name(mode_name)
+
             if host_info:
                 host_info['date_time'] = time.strftime("%Y-%m-%d %H:%M",time.localtime())
                 host_info['user'] = getpass.getuser()
@@ -61,7 +69,7 @@ class Deploy_vlan_ip(object):
                     content = my_lib.html_result(host_info,'vc')
                     if self.tool.send_email(content):
                         my_lib.writelog("\033[1;32;40m**Success**\033[0m 发送邮件 成功.\n",'i')
-                        return 
+                        return
                     else:
                         my_lib.writelog("\033[1;31;40m**Error**\033[0m 发送邮件 失败! 请检查收件人是否配置正确.\n",'e')
 
@@ -73,7 +81,7 @@ class Deploy_vlan_ip(object):
 
             elif tag == 'switch_has_vlan' :
                 result = self.switch_remote_vlanip(host_info)
-                if  result == 1:      
+                if  result == 1:
                     my_lib.writelog("\033[1;32;40m**Success**\033[0m 切换vlan ip 成功!\n",'i')
                     content = my_lib.html_result(host_info,'vs')
                     if self.tool.send_email(content):
@@ -100,7 +108,7 @@ class Deploy_vlan_ip(object):
 
             elif tag == 'show_vlan_info':
                 e1 = multiprocessing.Event()
-                w1 = multiprocessing.Process(name='block', 
+                w1 = multiprocessing.Process(name='block',
                                  target=self.tool.timer_progress,
                                  args=(e1,))
                 w1.start()
@@ -109,9 +117,33 @@ class Deploy_vlan_ip(object):
                 w1.join()
                 return True
 
+            elif tag == 'check_vlan_net':
+                e1 = multiprocessing.Event()
+                w1 = multiprocessing.Process(name='block',
+                                 target=self.tool.timer_progress,
+                                 args=(e1,))
+                w1.start()
+                self.check_vlanip_network(host_info)
+                e1.set()
+                w1.join()
+                return True
+
             else:
                 my_lib.writelog("\033[1;31;40m**Error**\033[0m 非法参数.\n",'e')
 
+    def check_vlanip_network(self,host_info):
+        net_status = self.check_vlan_net(host_info['vipbusi'],host_info['vipdata'],host_info['mipbusi'],host_info['mipdata'])
+        for key,value in net_status.items():
+            if int(value) == 0:
+                if key == host_info['vipbusi'] or key == host_info['vipdata']:
+                  my_lib.writelog("\033[1;32;40m**Success**\033[0m vlan ip: %s  网络畅通.\n" % key,'i')
+                  continue
+                my_lib.writelog("\033[1;32;40m**Success**\033[0m machine ip: %s  网络畅通.\n" % key,'i')
+            else:
+                if key == host_info['vipbusi'] or key == host_info['vipdata']:
+                    my_lib.writelog("\033[1;31;40m**Success**\033[0m vlan ip: %s  网络中断.\n" % key,'e')
+                continue
+                my_lib.writelog("\033[1;31;40m**Success**\033[0m machine ip: %s  网络中断.\n" % key,'e')
 
     def get_info_by_name(self,mode_name):
         '''
@@ -133,14 +165,14 @@ class Deploy_vlan_ip(object):
             配置vlan ip
         '''
         # e = multiprocessing.Event()
-        # w = multiprocessing.Process(name='block', 
+        # w = multiprocessing.Process(name='block',
         #                          target=self.tool.timer_progress,
         #                          args=(e,))
         m_connect_ip = ""
         s_connect_ip = ""
         net_status = {}
         e1 = multiprocessing.Event()
-        w1 = multiprocessing.Process(name='block', 
+        w1 = multiprocessing.Process(name='block',
                                  target=self.tool.timer_progress,
                                  args=(e1,))
         w1.start()
@@ -156,7 +188,7 @@ class Deploy_vlan_ip(object):
                 my_lib.writelog("\033[1;31;40m**Error**\033[0m vlan ip已在本地网络中其他机器配置,请联系系统管理员\n",'e')
                 e1.set()
                 w1.join()
-                
+
                 if confirm_info('quit'):
                     sys.exit(1)
                 else:
@@ -174,10 +206,10 @@ class Deploy_vlan_ip(object):
                     if len(m_connect_ip) > 0:
 
                         result = self.do_operation('deploy',host_info,m_connect_ip)
-  
+
                         if result:
                             my_lib.writelog("\033[1;32;40m**Success**\033[0m 远程主机vlan ip部署成功!\n",'i')
-                      
+
                             return 1
                         else:
                             my_lib.writelog("\033[1;31;40m**Error**\033[0m 远程主机vlan ip部署 失败!\n",'i')
@@ -198,49 +230,57 @@ class Deploy_vlan_ip(object):
         show_header_info('deploy_by_ip')
         while True:
             try:
-                real_ip = raw_input("\n【退到主菜单输入 exit】请输入 \033[1;32;40m  Machine ip \033[0m;  >>")
+                realip = raw_input("\n【退到主菜单输入 exit】请输入 \033[1;32;40m  Machine ip \033[0m;  >>")
             # my_lib.writelog("【退到主菜单输入 exit】请输入\033[1;32;40m Machine ip \033[0m;【**Not Vlan IP**】    >>",'i')
-                if real_ip.strip() == "exit":
+
+                if realip.strip() == "exit":
                     my_lib.writelog("exit",'i')
                     main()
-                if len(real_ip.strip()) == 0:
+                if len(realip.strip()) == 0:
                     my_lib.writelog("\033[1;31;40m**Error**\033[0m 输入的ip地址非法!\n",'e')
                     continue
-                if real_ip.strip() == "quit":
+                if realip.strip() == "quit":
                     if confirm_quit():
                         sys.exit(1)
 
             except KeyboardInterrupt:
                 sys.exit(1)
 
-            try:
-                real_ip = IP(real_ip.strip()).strNormal()
-                break
-            except ValueError,e:
+            if self.tool.ipFormatChk(realip.strip()):
+                real_ip = realip.strip()
+            else:
                 my_lib.writelog("\033[1;31;40m**Error**\033[0m 输入的ip地址非法!\n",'e')
                 continue
 
+            if my_ping.verbose_ping(real_ip):
+                break
+            else:
+                my_lib.writelog("\033[1;31;40m**Error**\033[0m 网络不可达!\n",'e')
+            continue
+
         while True:
             try:
-                vlan_ip = raw_input("\n【退到主菜单输入 exit】请输入\033[1;32;40m VLAN IP \033[0m;  >>")
-                # my_lib.writelog("\n【退到主菜单输入 exit】请输入\033[1;32;40m VLAN IP \033[0m;【 **Not Machine IP**】  >>",'i')
-                if len(vlan_ip.strip()) == 0:
+                vlanip = raw_input("\n【退到主菜单输入 exit】请输入\033[1;32;40m VLAN IP \033[0m;  >>")
+
+                if len(vlanip.strip()) == 0:
                     continue
-                if vlan_ip.strip() == "exit":
+                if vlanip.strip() == "exit":
                     my_lib.writelog("exit",'i')
                     main()
-                if vlan_ip.strip() == "quit":
+                if vlanip.strip() == "quit":
                     if confirm_quit():
                         sys.exit(1)
 
             except KeyboardInterrupt:
                 sys.exit(1)
 
-            try:
-                vlan_ip = IP(vlan_ip.strip()).strNormal()
-            except ValueError,e:
-                my_lib.writelog("\033[1;31;40m**Error**\033[0m 输入的ip地址 非法!\n",'e')
+
+            if self.tool.ipFormatChk(vlanip.strip()):
+                vlan_ip = vlanip.strip()
+            else:
+                my_lib.writelog("\033[1;31;40m**Error**\033[0m 输入的ip地址非法!\n",'e')
                 continue
+
 
             url = "http://10.13.195.150/system/server/getserverinfo?busi_key=ip_switch&mip=%(real_ip)s&vip=%(vlan_ip)s" % {'real_ip':real_ip,'vlan_ip':vlan_ip}
 
@@ -270,7 +310,7 @@ class Deploy_vlan_ip(object):
                 break
 
         main()
-                
+
     def check_vlanip_status(self,vlan_bussip,vlan_dataip,machineip):
         '''
             检查vlan ip是否在远程主机已配置
@@ -283,7 +323,7 @@ class Deploy_vlan_ip(object):
         vlan_dataip_confirm = False
 
         command = 'cat /var/lib/vlan/vlan_stats | grep \"v_device_list\" | cut -d \":\" -f2'
-    
+
         result_dev,error = self.tool.ssh_cmd(machineip,command)
 
 
@@ -367,8 +407,8 @@ class Deploy_vlan_ip(object):
         if net_status[host_info['sipbusi']] == 1 and net_status[host_info['sipdata']] == 1:
             s_vlan_busi_status = '\033[1;31;40m 无法获取 \033[0m'
             s_vlan_data_status = '\033[1;31;40m 无法获取 \033[0m'
-        
-        
+
+
         m_connect_ip,s_connect_ip = self.get_alive_remote_ip(host_info['mipbusi'],host_info['mipdata'],host_info['sipbusi'],host_info['sipdata'] )
 
         #print "m_connect_ip,s_connect_ip",m_connect_ip,s_connect_ip
@@ -454,8 +494,8 @@ class Deploy_vlan_ip(object):
                 elif net_status[sipbusi] == net_status[sipdata]:
                     s_connect_ip = sipbusi
                 else:
-                    s_connect_ip = sipdata 
-         
+                    s_connect_ip = sipdata
+
 
         if net_status[mipbusi]  == 0 or net_status[mipdata] == 0:
             #主机网络通畅,至少有一个网卡可以ping通
@@ -474,7 +514,7 @@ class Deploy_vlan_ip(object):
             切换(vlan ip和主机ip)主函数入口
         '''
         e1 = multiprocessing.Event()
-        w1 = multiprocessing.Process(name='block', 
+        w1 = multiprocessing.Process(name='block',
                                  target=self.tool.timer_progress,
                                  args=(e1,))
         w1.start()
@@ -515,13 +555,13 @@ class Deploy_vlan_ip(object):
         '''
         import commands
         e1 = multiprocessing.Event()
-        w1 = multiprocessing.Process(name='block', 
+        w1 = multiprocessing.Process(name='block',
                                  target=self.tool.timer_progress,
-                                 args=(e,))
+                                 args=(e1,))
         e2 = multiprocessing.Event()
-        w2 = multiprocessing.Process(name='block', 
+        w2 = multiprocessing.Process(name='block',
                                  target=self.tool.timer_progress,
-                                 args=(e,))
+                                 args=(e2,))
 
         mhostname = host_info['mhostname']
         shostname = host_info['shostname']
@@ -588,7 +628,7 @@ class Deploy_vlan_ip(object):
 
         net_status = {}
         if len(args) > 0:
-            
+
             for ip in args:
                 if ip is None:
                     net_status[ip] = 1
@@ -605,13 +645,16 @@ class Deploy_vlan_ip(object):
             执行新配置
         '''
         e = multiprocessing.Event()
-        w = multiprocessing.Process(name='block', 
+        w = multiprocessing.Process(name='block',
                                  target=self.tool.timer_progress,
                                  args=(e,))
 
         if host_info['vipbusi' ] is not None and host_info['vipdata'] is not None:
-            command = "/usr/bin/python /opt/opbin/tools/gerenate_route.py -b %(vipbusi)s -d %(vipdata)s -o add -m %(mc_type)s -v" % {'vipbusi':host_info['vipbusi'],'vipdata':host_info['vipdata'],'mc_type':host_info['isvirtual']}
+            command = "/usr/bin/python /opt/opbin/tools/gerenate_route.py -b %(vipbusi)s -d %(vipdata)s -o add -m %(mc_type)s" % {'vipbusi':host_info['vipbusi'],'vipdata':host_info['vipdata'],'mc_type':host_info['isvirtual']}
             result,error_a = self.tool.ssh_cmd(remote_ip,command)
+            if len(result) > 10:
+                print result
+                sys.exit(1)
             if len(error_a) == 0:
                 w.start()
                 command = "/bin/bash /opt/opbin/tools/scripts/vlan_start.sh csmode"
@@ -731,12 +774,13 @@ def clean_info(remote_ip,tag="no"):
         '''
         tool = my_lib.Public_tool()
         e = multiprocessing.Event()
-        w = multiprocessing.Process(name='block', 
+        w = multiprocessing.Process(name='block',
                                  target=tool.timer_progress,
                                  args=(e,))
+
         if tag == "yes":
             w.start()
-            command = '/bin/bash /opt/opbin/tools/scripts/vlan_start.sh restart'
+            command = '/bin/bash /opt/opbin/tools/scripts/vlan_start.sh stop'
             result,error = tool.ssh_cmd(remote_ip,command)
             e.set()
             w.join()
@@ -756,15 +800,43 @@ def clean_info(remote_ip,tag="no"):
 
             return True
 
+def confirm_vlan_info(machineip):
+    '''
+        防止清理未配置vlan ip 服务的主机
+    '''
+    tool = my_lib.Public_tool()
+
+    command = 'test -e \"/var/lib/vlan/vlan_stats\" && cat /var/lib/vlan/vlan_stats | grep \"v_device_list\" | cut -d \":\" -f2'
+    result_dev,error = tool.ssh_cmd(machineip,command)
+
+    if len(result_dev) == 0:
+        my_lib.writelog("\033[1;31;40m**Error**\033[0m vlan ip 未配置!无法清理.\n",'e')
+        return False
+
+    for dev in result_dev.strip().split():
+        command = 'ifconfig  %s | grep \"inet addr:\" | cut -d \":\" -f2 | awk \'{print $1}\'' % dev
+        result,error = tool.ssh_cmd(machineip,command)
+        if len(result) == 0:
+            my_lib.writelog("\033[1;31;40m**Error**\033[0m vlan ip 未配置!无法清理.\n",'e')
+            return False
+
+        if result.strip() == machineip:
+            my_lib.writelog("\033[1;31;40m**Error**\033[0m 输入ip地址非法,请输入机器的ip(eth0或者eth1)!\n",'e')
+            return False
+
+    return True
+
+
 def clean_by_ip():
     '''
         清理远程主机的vlan ip配置
     '''
+    tool = my_lib.Public_tool()
     show_header_info('clean_by_ip')
     while True:
         try:
             real_ip = raw_input("\n【退到主菜单输入 exit】请输入\033[1;32;40m remote Machine ip \033[0m;    >>")
-            # my_lib.writelog("【退到主菜单输入 exit】请输入\033[1;32;40m Machine ip \033[0m;(**Not Vlan IP**) >>",'i',False)
+
             if real_ip.strip() == "exit":
                 my_lib.writelog("exit",'i')
                 main()
@@ -776,16 +848,24 @@ def clean_by_ip():
         except KeyboardInterrupt:
             sys.exit(1)
 
-        try:
-            realip = IP(real_ip.strip()).strNormal()
-
-        except ValueError,e:
+        if tool.ipFormatChk(real_ip.strip()):
+            realip = real_ip.strip()
+        else:
             my_lib.writelog("\033[1;31;40m**Error**\033[0m 输入的ip地址非法!\n",'e')
             continue
 
-        if confirm_info("clean"):
-            if clean_info(realip,"yes"):
-                my_lib.writelog("\033[1;32;40m**Success**\033[0m  远程主机%s vlan ip配置清理成功!\n" % real_ip,'i')
+        if my_ping.verbose_ping(realip):
+            pass
+        else:
+            my_lib.writelog("\033[1;31;40m**Error**\033[0m 网络不可达!\n",'e')
+            continue
+
+        if confirm_vlan_info(realip):
+            if confirm_info("clean"):
+                if clean_info(realip,"yes"):
+                    my_lib.writelog("\033[1;32;40m**Success**\033[0m  远程主机%s vlan ip配置清理成功!\n" % realip,'i')
+            else:
+                continue
         else:
             continue
 
@@ -830,7 +910,7 @@ def confirm_quit():
             # my_lib.writelog("**是否退出** Quit? %s >> " % info,'i')
             if name.strip() == "y" or name.strip() == "Y":
                 my_lib.writelog("\n\n\033[1;32;40m**Success**\033[0m Good Luck Boys.........\n",'i')
-                return True        
+                return True
             elif name.strip() == "n" or name.strip() == "N":
 
                 main()
@@ -861,7 +941,9 @@ def main():
     print(word.ljust(2))
     word = "%s6. clean vlan ip on remote server" % (" "*20)
     print(word.ljust(2))
-    word = "%s7. quit" % (" "*20)
+    word = "%s7. check network for vlan ip" % (" "*20)
+    print(word.ljust(2))
+    word = "%s8. quit" % (" "*20)
     print(word.ljust(2))
     print
     word = ""
@@ -895,20 +977,26 @@ def main():
 
     elif choice == 5:
         deploy_cls.input_by_name("show_vlan_info")
-    
+
     elif choice == 6:
         clean_by_ip()
 
     elif choice == 7:
+        deploy_cls.input_by_name("check_vlan_net")
+
+    elif choice == 8:
         result = confirm_quit()
         if result:
             sys.exit(1)
     else:
         my_lib.writelog("\033[1;31;40m**Error**\033[0m 输入的选项不正确.\n",'e')
 
+
     result = confirm_quit()
     if result:
         sys.exit(1)
 
+
 if __name__ == "__main__":
     main()
+    
