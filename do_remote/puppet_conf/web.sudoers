@@ -1,0 +1,24 @@
+Defaults secure_path="/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin:/opt/dell/srvadmin/sbin:/opt/MegaRAID/MegaCli/MegaCli64:/usr/local/jdk/bin"
+Defaults    env_reset
+Defaults    env_keep = "COLORS DISPLAY HOSTNAME HISTSIZE INPUTRC KDEDIR \
+                        LS_COLORS MAIL PS1 PS2 QTDIR USERNAME \
+                        LANG LC_ADDRESS LC_CTYPE LC_COLLATE LC_IDENTIFICATION \
+                        LC_MEASUREMENT LC_MESSAGES LC_MONETARY LC_NAME LC_NUMERIC \
+                        LC_PAPER LC_TELEPHONE LC_TIME LC_ALL LANGUAGE LINGUAS \
+                        _XKB_CHARSET XAUTHORITY"
+
+root	ALL=(ALL) 	ALL
+
+
+
+lizhi,yuchang,liyangshao,wujuefei ALL=(root) ALL,!/bin/bash,!/bin/sh,!/bin/su,!/usr/sbin/useradd,/bin/bash *.*,/bin/sh *.*,!/usr/sbin/userdel,!/usr/bin/passwd
+lizhi,yuchang,liyangshao,wujuefei ALL=(biztech) ALL
+
+lixuebin,heguanghao ALL=(root) ALL,!/bin/bash,!/bin/sh,!/bin/su,!/usr/sbin/useradd,/bin/bash *.*,/bin/sh *.*,!/usr/sbin/userdel,!/usr/bin/passwd
+lixuebin,heguanghao ALL=(biztech) ALL
+
+biztech ALL=(root) NOPASSWD: /bin/rpm
+
+for_monitor ALL=(root) NOPASSWD: ALL,!/bin/bash,!/bin/sh,!/bin/su,!/usr/sbin/useradd,/bin/bash *.*,/bin/sh *.*,!/usr/sbin/userdel,!/usr/bin/passwd
+
+for_ct ALL=(root) NOPASSWD: /bin/rpm,/bin/mkdir,/usr/bin/svn,/bin/sh *.*,/bin/cp,/usr/bin/find,/bin/rm,/usr/bin/rsync,/bin/sed

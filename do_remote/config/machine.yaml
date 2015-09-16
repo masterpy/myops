@@ -1,0 +1,80 @@
+pm: 
+  - 
+    type: C3
+    disk_total: 8
+    data_data_name: /data
+    data_disk_num: 6
+    data_disk_type: SAS
+    data_raid_info: R5
+    sys_disk_num: 2
+    sys_disk_type: SAS
+    sys_raid_info: R1
+  - 
+    type: DX
+    disk_total: 16
+    data_data_name: /data
+    data_disk_num: 14
+    data_disk_type: SAS
+    data_raid_info: R5
+    sys_disk_num: 2
+    sys_disk_type: SAS
+    sys_raid_info: R1
+  - 
+    type: E1
+    disk_total: 8
+    data_data_name: /data
+    data_disk_num: 4
+    data_disk_type: SSD
+    mylog_data_name: /mylog
+    mylog_disk_num: 2
+    mylog_disk_type: SAS
+    sys_disk_num: 2
+    sys_disk_type: SAS
+  - 
+    type: E5
+    disk_total: 16
+    data_data_name: /data
+    data_disk_num: 8
+    data_disk_type: SSD
+    data1_data_name: /data1
+    data1_disk_num: 6
+    data1_disk_type: SAS
+    sys_disk_num: 2
+    sys_disk_type: SAS
+  - 
+    type: E6
+    disk_total: 16
+    data_data_name: /data
+    data_disk_num: 12
+    data_disk_type: SSD
+    mylog_data_name: /mylog
+    mylog_disk_num: 2
+    mylog_disk_type: SAS
+    sys_disk_num: 2
+    sys_disk_type: SAS
+  - 
+    type: S1
+    disk_total: 13
+    data_data_name: /data
+    data_disk_num: 12
+    data_disk_type: SAS
+    sys_disk_num: 1
+    sys_disk_type: SAS
+raid: 
+  - 
+    type: R0
+  - 
+    type: R1
+  - 
+    type: R5
+  - 
+    type: R10
+vm: 
+  - 
+    type: V1-1 V2-1 V3-1 V4-1 V5-1 U1 U2 U3 U4
+    master_data_dir: /data
+    slave_dir_one: /opt
+  - 
+    type: V1-1B V2-1B V3-1B V4-1B V5-1B U1B U2B U3B U4B
+    master_data_dir: /opt
+    slave_dir_one: /data
