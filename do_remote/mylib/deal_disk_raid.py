@@ -4,6 +4,7 @@
 import deal_ssh,common_lib
 import re,sys,time
 from mylib.base import Init_Base
+import pprint
 
 class Deal_Raid_info(Init_Base):
     '''
@@ -11,8 +12,7 @@ class Deal_Raid_info(Init_Base):
     '''
     def __init__(self,init_server_info,db_server_info):
         super(Deal_Raid_info, self).__init__(init_server_info,db_server_info)
-
-
+        
     def check_tool_file(self):
         '''
             检查硬盘工具是否存在
@@ -185,6 +185,8 @@ class Deal_Raid_info(Init_Base):
                 sql = "insert into disk_info (server_busi_ip,virtual_group,disk_sn,disk_type,disk_size,disk_status,slot_number,media_error_count,other_error_count,raid_info,server_id) values ('%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s');"
                 super(Deal_Raid_info,self).insert_advanced(sql,client_ip,virtual_group,disk_sn,disk_type,disk_size,disk_status,slot_number,media_error,other_error,raid_info,server_id)
 
+
+
     def deal_disk_info(self,client_ip,ld_blocks_list,pd_blocks_list):
         '''
             保存raid和磁盘信息，不做重新raid等处理
@@ -250,9 +252,7 @@ class Deal_Raid_info(Init_Base):
                             elif line.startswith("Other Error Count:"):
                                 other_error = line.split(":")[1]      
                             elif line.startswith("Raw Size:"):
-                                print line
                                 disk_size = line.split(":")[1].split()[0]+line.split(":")[1].split()[1]
-                                print line.split(":")[1].split()[0]
                                 disk_raw_size = int(float(line.split(":")[1].split()[0]))
                             elif line.startswith("Firmware state:"):
                                 disk_status = line.split(":")[1].split(",")[0]
@@ -278,8 +278,9 @@ class Deal_Raid_info(Init_Base):
         elif tag == "sys":
             sql = "select sys_disk_num,sys_disk_type,sys_raid_info from pm_partition_rule where type = '%s'"
 
-        result = super(Deal_Raid_info,self).select_advanced(sql,server_package)
 
+        result = super(Deal_Raid_info,self).select_advanced(sql,server_package)
+ 
         return result
 
 
@@ -288,15 +289,19 @@ class Deal_Raid_info(Init_Base):
             清理raid
             raid_info：排除对立的raid信息
         '''
+        import itertools
         str_num = ""
         sql = "select virtual_group from disk_info where server_busi_ip = '%s' and virtual_group != 0 and disk_type = '%s' and raid_info != '%s'" 
 
         result= super(Deal_Raid_info,self).select_advanced(sql,host_busi_ip,disk_type,raid_info)
 
-        if len(result) > 0:
-            for num in result:
+        if len(result) > 0: 
+            
+            it = ids = list(set(result))
+            for num in it:
                 level = "-L%s" % num
                 cmd = "/opt/MegaRAID/MegaCli/MegaCli64 -CfgLdDel %s -force -a0" % level
+
                 deal_ssh.remote_ssh_key_exec_simple(host_busi_ip,'root',cmd)
                 str_num = num + "," + str_num
 
@@ -335,11 +340,12 @@ class Deal_Raid_info(Init_Base):
             r_info = "10"
 
         cmd = "/usr/local/sbin/sogou-raid -t create -r %s -n %s" % (r_info,host_disk_num)
-        print cmd
+
         result = deal_ssh.remote_ssh_key_exec_simple(host_busi_ip,'root',cmd)
         if result:
             print "host: %s,do raid sucess!" % host_busi_ip
             return True
+
 
 
     def  set_disk_info(self):
@@ -380,6 +386,7 @@ class Deal_Raid_info(Init_Base):
                     #disk_type-->result4data[0][1]
                     #raid_info-->result4data[0][2]
 
+
                     check4data = self.check_raid_info(host_busi_ip,result4data[0][0],result4data[0][1],result4data[0][2])
 
 
@@ -396,7 +403,7 @@ class Deal_Raid_info(Init_Base):
                         self.clean_raid(host_busi_ip,result4data[0][1],result4other[0][2])
                         if self.do_deal_raid(host_busi_ip,result4data[0][0],result4data[0][2]):
                            do_data_raid = True
-
+                    
 
 
 

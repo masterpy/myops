@@ -59,14 +59,13 @@ class PassWorder(object):
         def id_generator(size=6, chars=string.ascii_uppercase + string.digits+'!@#$%^&*()'):
             return ''.join(random.choice(chars) for _ in range(size))
 
-        if team == "dev":
-            #password = "sogou_Dev@!~"
-            password = "noSafeNoWork@2014"
-        elif team == 'qa':
-            password = "bizqaapp!@#"
-        elif team == 'online':
-            password = id_generator(14)
-
+        # if team == "dev":
+        #     #password = "sogou_Dev@!~"
+        #     password = "noSafeNoWork@2014"
+        # elif team == 'qa':
+        #     password = "bizqaapp!@#"
+        # elif team == 'online':
+        password = id_generator(14)
         return password
 
     
@@ -106,13 +105,7 @@ class Control_key(Init_Base):
             else:
                 print "%s 添加key OP_KEY 成功." % init_server_info['client_server']['client_ip']
 
-        elif tag == "del":
-            command = "sed -i 's/root@tc_202_117//g' /root/.ssh/authorized_keys"
-            result,error = deal_ssh.remote_ssh_password_exec(init_server_info,command)
-            if result == "wrong":
-                print "删除key OP_KEY 失败."
-            else:
-                print "删除key OP_KEY 成功"
+
 
 
 
@@ -122,14 +115,7 @@ class Control_key(Init_Base):
         '''
         for init_server_info in self.init_server_info:
             self.control_key(init_server_info,'add')
-
-
-    def del_relation_server(self):
-        '''
-            删除信任关系
-        '''
-        relation_cls = Control_key()
-        relation_cls.control_key('del')  
+  
 
     def change_server_password(self,new_password,server_info):
         '''
@@ -143,6 +129,12 @@ class Control_key(Init_Base):
             print "%s change password failed." %  server_info['client_server']['client_ip']
             return False
         else:
+            f = open('/tmp/machine.list.pass','a+')
+            f.write(server_info['client_server']['client_ip'])
+            f.write(",")
+            f.write(new_password)
+            f.write("\n")
+            f.close()
             print "%s change password sucess."  % server_info['client_server']['client_ip']
             return True
 
@@ -160,8 +152,6 @@ class Control_key(Init_Base):
 
         for server_info in self.init_server_info:
             temp_dic = server_info['client_server'].copy()
-
-
             new_password = password_cls.gernal_password(temp_dic['group'])
             temp_dic['new_password'] = new_password
             self.change_server_password(new_password,server_info)
@@ -199,12 +189,12 @@ class Control_key(Init_Base):
             temp_dic['product_name'] = product_name
             temp_dic['cloud_type'] = self.judge_cloud_type(temp_dic['server_package'])
         
-        
+     
             self.save_server_info(temp_dic)
             temp_dic = {}
 
 
-    def judge_cloud_type(server_package):
+    def judge_cloud_type(self,server_package):
         '''
             判断虚机属于公有云还是私有云
         '''
@@ -262,15 +252,27 @@ class Control_key(Init_Base):
         cloud_type = client_info['cloud_type']
         
 
-        sql = "select `id` from server_info where host_busi_ip = '%s' or server_sn = '%s'" 
+        sql = "select `id` from server_info where host_busi_ip = '%s' and server_sn = '%s'" 
+
         result = super(Control_key,self).select_advanced(sql,host_busi_ip,server_sn)
-
-
 
         if len(result) > 0:
             for sn in result:
                     conditional_query_two = 'id = %s '
                     super(Control_key,self).update('server_info', conditional_query_two,sn,host_data_ip=host_data_ip,host_busi_ip=host_busi_ip,host_name=host_name,user_account=user,root_password=plaintext,server_release=relase,server_type=server_type,cloud_type=cloud_type,server_manufacturer=server_manufacturer,server_sn=server_sn,product_name=product_name,eth0_mac=eth0_mac,eth1_mac=eth1_mac,eth2_mac=eth2_mac,eth3_mac=eth3_mac,idc_name=idc_name,modify_date=modify_date)
+
         else:
             super(Control_key,self).insert('server_info',host_data_ip=host_data_ip,host_busi_ip=host_busi_ip,host_name=host_name,user_account=user,root_password=plaintext,server_release=relase,server_type=server_type,cloud_type=cloud_type,server_manufacturer=server_manufacturer,server_sn=server_sn,product_name=product_name,eth0_mac=eth0_mac,eth1_mac=eth1_mac,eth2_mac=eth2_mac,eth3_mac=eth3_mac,idc_name=idc_name,modify_date=modify_date)  
 
+        client_info = {}
+
+def del_relation_server(init_server_info):
+    '''
+        删除信任关系
+    '''
+    command = "sed -i 's/root@tc_202_117//g' /root/.ssh/authorized_keys"
+    result,error = deal_ssh.remote_ssh_password_exec(init_server_info,command)
+    if result == "wrong":
+        print "删除key OP_KEY 失败."
+    else:
+        print "删除key OP_KEY 成功"

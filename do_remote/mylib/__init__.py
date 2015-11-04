@@ -8,3 +8,4 @@ import deal_partition
 import deal_machine_status
 import deal_gerenal_config
 import deal_memory
+import deal_pm_disk_info

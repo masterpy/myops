@@ -239,7 +239,7 @@ def add_relation(ip):
 
 def del_relation(ip):
     USER = "for_monitor"
-    command  = "sudo sed -i '/tc_202_117/d' /root/.ssh/authorized_keys"
+    command  = "sudo sed -i '/tc_239_235/d' /root/.ssh/authorized_keys"
     result = deal_ssh.remote_ssh_key_exec_simple(ip,USER,command)
     print result
 
@@ -338,7 +338,7 @@ if __name__ == '__main__':
             change_dir(ip)
             install_soft(ip)
             clean_dns(ip)
-            del_relation(ip)
+  
         # with open("/tmp/machine.list.pass2") as f:
         #     for line in f.readlines():
         #         if len(line) > 1:

@@ -40,14 +40,19 @@ def add_hostname_temp(ip):
     for line in buf.readlines():
         line = line.strip()
         if p1.match(line):
-            delete_old_cmd = "sed -i /%s/d /etc/hosts" % short_host_name
+            delete_old_cmd = "sudo sed -i /%s/d /etc/hosts" % short_host_name
             deal_ssh.remote_ssh_key_exec_simple(ip,user,delete_old_cmd)
 
         
     add_hostname = "%s   %s   %s" %  (ip,hostname,short_host_name)
 
+    #add_hostname_temp_cmd = "cp -rp /etc/hosts ~/hosts;echo -e \"%s\" >> hosts;sudo cp -rp hosts  /etc/hosts;sudo chown root:root /etc/hosts;hostname -f" % add_hostname
+
+    #print add_hostname_temp_cmd
+    #result = deal_ssh.remote_ssh_key_exec_simple(ip,user,add_hostname_temp_cmd)
+
     add_hostname_cmd = "echo -e \"%s\" >> /etc/hosts;hostname -f" % add_hostname
-    
+
     result = deal_ssh.remote_ssh_key_exec_simple(ip,user,add_hostname_cmd)
 
     add_hostname_cmd = "sed -i /houston.repos.sogou-inc.com/d /etc/hosts;echo -e \"10.139.45.69   houston.repos.sogou-inc.com\" >> /etc/hosts"
@@ -72,18 +77,53 @@ def change_tmp_power(ip):
 
 
 def change_dir(ip):
-    user = "root"
-    cmd = "puppet agent -t"
+    user = "for_monitor"
+    # cmd = "sudo userdel -r fangxiuli;groupdel fangxiuli;\
+    # sudo userdel -r liujunjie;groupdel liujunjie;\
+    # sudo userdel -r gubozhi;groupdel gubozhi;\
+    # sudo userdel -r shanhongjie;groupdel shanhongjie;\
+    # sudo userdel -r shanhongjie;groupdel shanhongjie;\
+    # sudo userdel -r wangshuo;groupdel wangshuo;\
+    # sudo userdel -r yanghuihui;groupdel yanghuihui;\
+    # sudo userdel -r zhongtingting;groupdel zhongtingting;"
     #cmd = "umount /search;sed -i s/search/data/g /etc/fstab;mkdir /data ; mount -a;df -h"
     #cmd = "cat /etc/passwd | grep \"for_monitor\""
     #cmd = "sed '/tc_202_117/d' ~/.ssh/authorized_keys"
+    cmd = "cat /etc/passwd | awk -F \":\" '{print $1}' |grep -E \"fangxiuli|liujunjie|gubozhi|shanhongjie|wangshuo|yanghuihui|zhongtingting\""
+
     result = deal_ssh.remote_ssh_key_exec_simple(ip,user,cmd)
-    print result
+
+
+    cmd3 = ""
     if isinstance(result,bool):
+        print "au failed"
         print ip
-        return False
-    else:
+        # f = open("/tmp/online_user.txt","a+")
+        # f.write(ip)
+        # f.write("\n")
+        # f.close()
         pass
+        # return False
+    else:
+        if len(result.strip().strip("\n")) > 0:
+            print result
+            print ip
+
+            # for users in result.split("\n"):
+            #     if len(users) > 0:
+            #         cmd3 += "userdel -r %s;groupdel %s;" % (users,users)
+            # result = deal_ssh.remote_ssh_key_exec_simple(ip,user,cmd3)
+
+    # cmd2 = "cat /etc/passwd | awk -F \":\" '{print $1}' |grep -E \"fangxiuli|liujunjie|gubozhi|shanhongjie|wangshuo|yanghuihui|zhongtingting\""
+
+    # result = deal_ssh.remote_ssh_key_exec_simple(ip,user,cmd2)
+
+    # if isinstance(result,bool):
+    #     pass
+    # else:
+    #     print result
+           
+
 
     #print "host:%s success!" % ip
     #cmd = 'echo \"%s\" | passwd %s --stdin' % (new_password,user)
@@ -115,7 +155,6 @@ def install_soft(hostip):
 
     if child1 == 0:
         result = deal_ssh.remote_ssh_key_exec_simple(hostip,user,cmd_remote)
-        print result
         if result:
             print "soft install success!"
             return True
@@ -223,7 +262,7 @@ def check_passwd(ip,new_password):
 def add_relation(ip):
 
     USER = "for_monitor"
-    OP_KEY = '''from=\\"10.147.239.235,10.137.239.235,10.146.239.235,10.136.239.235,10.147.239.1,10.137.239.1,10.146.239.1,10.136.239.1\\",no-agent-forwarding,no-port-forwarding ssh-dss AAAAB3NzaC1kc3MAAACBAPx3767ksyO+E+L6fmIKJ+2Uq6yyyk3F83DQ2J+BLZgkzJG6K9FaoFLJQa+iLu3eL9ik+8/oNYcv96dL4M7tZRrQy0swBzIRlEhVRSMN7Ptiu+2TfNfgujA4PVPIvjPqVcbal1frEIy7VHQHSuVMwMI/6edd6J9FAo9CPHnsIlSdAAAAFQCFzOzFUZyUP9cOD+ubopSb+j3z0wAAAIBYXQOIRHmxk0hlwh13seetRtrkNYp1QGkaSLu8KvSr3cmGAUSndqxPVgvL5xT/C3S+sABB4H5KGpxlqTmqNn2MWM+oX4HBmsKXzslxIp0tlwqUE4DWaNvCEiKBqEBnWM+QTlSZ5C0kTJl+Os4rfEYC46R0bhHhYxc6NnpNyYv6JwAAAIBktn02O6k+Tg6CwN1RcG+RMZcqwZaUJ/kgDha3Ho9CZCcC5mNiC36M1qGW0J47RoEe5vSAsTitBgyr3pPEZp5+pnJjaXVo3uRWVtsAodDoWG0dOqYEIeX03VqrFQrt3SBsezPrpKoxZgItSbR6XnkK42iSrgk/f6Eyd3ckbh5a7Q== root@tc_239_235'''
+    #OP_KEY = '''from=\\"10.147.239.235,10.137.239.235,10.146.239.235,10.136.239.235,10.147.239.1,10.137.239.1,10.146.239.1,10.136.239.1\\",no-agent-forwarding,no-port-forwarding ssh-dss AAAAB3NzaC1kc3MAAACBAPx3767ksyO+E+L6fmIKJ+2Uq6yyyk3F83DQ2J+BLZgkzJG6K9FaoFLJQa+iLu3eL9ik+8/oNYcv96dL4M7tZRrQy0swBzIRlEhVRSMN7Ptiu+2TfNfgujA4PVPIvjPqVcbal1frEIy7VHQHSuVMwMI/6edd6J9FAo9CPHnsIlSdAAAAFQCFzOzFUZyUP9cOD+ubopSb+j3z0wAAAIBYXQOIRHmxk0hlwh13seetRtrkNYp1QGkaSLu8KvSr3cmGAUSndqxPVgvL5xT/C3S+sABB4H5KGpxlqTmqNn2MWM+oX4HBmsKXzslxIp0tlwqUE4DWaNvCEiKBqEBnWM+QTlSZ5C0kTJl+Os4rfEYC46R0bhHhYxc6NnpNyYv6JwAAAIBktn02O6k+Tg6CwN1RcG+RMZcqwZaUJ/kgDha3Ho9CZCcC5mNiC36M1qGW0J47RoEe5vSAsTitBgyr3pPEZp5+pnJjaXVo3uRWVtsAodDoWG0dOqYEIeX03VqrFQrt3SBsezPrpKoxZgItSbR6XnkK42iSrgk/f6Eyd3ckbh5a7Q== root@tc_239_235'''
 
     command = "sudo mkdir -p /root/.ssh;sudo cat /root/.ssh/authorized_keys >  ~/authorized_keys;sudo sed -i '/tc_239_235/d' ~/authorized_keys;sudo echo \"%s\" >> ~/authorized_keys;sudo /bin/cp ~/authorized_keys  /root/.ssh/;sudo chmod 600 /root/.ssh/authorized_keys; rm -f ~/authorized_keys" % OP_KEY
     
@@ -317,6 +356,22 @@ def check_puppet_version(ip):
     #     f.close()
 
 
+def get_vlan_id(ip):
+    user = "for_monitor"
+    cmd = "rsync /opt/opbin/do_remote/scripts/update_new_version.sh 10.13.192.140:/usr/local/src/"
+    result = deal_ssh.remote_ssh_key_exec_simple(ip,user,cmd)
+    print result
+
+def do_cmd(ip):
+    user = "for_monitor"
+    cmd = "cat /etc/sysconfig/network | grep \"HOSTNAME\""
+    result = deal_ssh.remote_ssh_key_exec_simple(ip,user,cmd)
+    print result
+    cmd = "cat /etc/hosts |grep \"sogou-in.domain\" | grep -v \"10.12.137.20\""
+    result = deal_ssh.remote_ssh_key_exec_simple(ip,user,cmd)
+    print result
+
+
 if __name__ == '__main__':
     # temp1 = []
     # temp2 = []
@@ -348,18 +403,19 @@ if __name__ == '__main__':
     #with open("/opt/opbin/tools/temp.list") as f:
     with open("/opt/opbin/tools/temp.list") as f:
         for ip in f.readlines():
-            change_dir(ip)
+            ip = ip.strip("\n")
+            #get_vlan_id(ip)
             # del_relation(ip)
-            # add_relation(ip)
+            #add_relation(ip)
             # print line.strip().split(",")[1]
             # ip = line.strip().split()[0]
             # pwd = line.strip().split()[1]
             # print line.strip().split()
             # print ip
-            # add_hostname_temp(ip)
-            # check_default_password(ip)
-            # change_dir(ip)
-            # install_soft(ip)
+            #add_hostname_temp(ip)
+            #check_default_password(ip)
+            change_dir(ip)
+            #install_soft(ip)
   
         # with open("/tmp/machine.list.pass2") as f:
         #     for line in f.readlines():

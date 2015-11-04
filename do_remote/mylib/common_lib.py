@@ -65,7 +65,8 @@ def get_idc_name(real_ip):
                 {'name':'土城联通机房_网段二','data_ip':'10.137','busi_ip':'10.147'},
                 {'name':'永丰电信机房','data_ip':'10.139','busi_ip':'10.149'},
                 {'name':'大郊亭电信机房','data_ip':'10.12','busi_ip':'10.14'},
-                {'name':'新兆维电信机房','data_ip':'10.136','busi_ip':'10.146'}]
+                {'name':'新兆维电信机房','data_ip':'10.136','busi_ip':'10.146'},
+                {'name':'新兆维电信机房','data_ip':'10.142','busi_ip':'10.152'}]
 
     if len(real_ip) == 0:
         return False
@@ -194,31 +195,28 @@ def get_system_product(host_info):
     return  server_manufacturer,server_sn,product_name
 
 
-def install_soft_programe(iplist):
+def install_soft_programe(host_ip_list,machine_info):
     '''
         安装软件
     '''
-    result = False
+    remote_user = machine_info['client_user']
+    remote_passwd = machine_info['client_password']
+    remote_port = machine_info['client_port']
 
-    user = "root"
-
-    scripts_dir =  bash_dir = os.path.join(os.path.split(os.path.dirname(__file__))[0],'scripts')
-    file_name = "%s/%s" % (scripts_dir,"init_env.sh")
+    scripts_dir = os.path.join(os.path.split(os.path.dirname(__file__))[0],'scripts')
+    src_file = "%s/%s" % (scripts_dir,"init_env.sh")
     
-    install_dir = "/usr/local/src/"
+    dst_file = "/usr/local/src/init_env.sh"
+   
+    for host_ip in  host_ip_list:
+        deal_ssh.trans_file(host_ip,remote_user,remote_passwd,src_file,dst_file)
+        cmd_remote = "bash %s" % (dst_file)
+        result  = deal_ssh.remote_ssh_password_simple_online(host_ip,remote_user,remote_passwd,cmd_remote)
 
-    for hostip in iplist:
-        cmd_local = "rsync -auv %s %s:%s" % (file_name,hostip,install_dir)
-        child1 = subprocess.call(shlex.split(cmd_local), stdout=subprocess.PIPE)  
-        cmd_remote = "cd %s;bash %s" % (install_dir,"init_env.sh")
-
-        if child1 == 0:
-            result = deal_ssh.remote_ssh_key_exec_simple(hostip,user,cmd_remote)
-            if result:
-                print "soft install success!"
-                return True
-
-    return False
+        if isinstance(result,bool):
+            return False
+  
+    return True
 
 
 

@@ -143,7 +143,6 @@ class Parted_Disk_init(Init_Base):
                     block_info = {}
             
 
-
             #挂载信息
             result100,error = deal_ssh.remote_ssh_key_exec(server_info,mounts_info_cmd)
             if result100 == "wrong":
@@ -177,29 +176,21 @@ class Parted_Disk_init(Init_Base):
                         if p1.match(line):
                             if line not in templist2:
                                 if line.split()[2] != "rootfs":
+                                    partition_mount_point = line.split()[0]
                                     templist2.append(line)
                                     #整理/proc/mounts下的挂载点
                                     if not vgroot_rule.match(line.split()[0]):
                                         if lvm_rule.match(line.split()[0]):
                                             partition_mount_point = "/dev/mapper/vgroot-%s" % line.split()[0].split("/")[-1]
-                                        else:
-                                            partition_mount_point = line.split()[0]
-                                    else:
-                                        partition_mount_point = line.split()[0]
-
+                          
                                     if root_rule.match(line.split()[0]):
                                         partition_mount_point = "/dev/mapper/vgroot-lvroot"
-                                    else:
-                                        partition_mount_point = line.split()[0]
 
-                           
-                                    partition_mount_point_list.append(line.split()[0])
-                                     
                                     result_info[partition_mount_point] = {'partition_name':line.split()[1],'partition_type':line.split()[2]}
 
                                     templist3.append(result_info)
                                     result_info = {}
-            
+
             #区分挂载分区
             has_mount_partition = []
             #所有分区列表
@@ -209,7 +200,6 @@ class Parted_Disk_init(Init_Base):
             #存放非挂载分区信息
             dictMerged2 = {}
 
-           
             swap = re.compile("(.*)swap(.*)")
             for blocks_info in templist:
                 for key,value in blocks_info.items():
@@ -218,6 +208,7 @@ class Parted_Disk_init(Init_Base):
                             has_mount_partition.append(key)
                             dictMerged1 = dict(partion_info[key].items() + blocks_info[key].items())
                             dictMerged1['partitions_point'] = key
+
 
                     if key not in has_mount_partition:
                         
@@ -238,7 +229,6 @@ class Parted_Disk_init(Init_Base):
                         all_partition_list.append(dictMerged2)
                     
                     #print dictMerged1
-                    print dictMerged2
                     dictMerged1 = {}
                     dictMerged2 = {}
 
@@ -251,7 +241,6 @@ class Parted_Disk_init(Init_Base):
         ''' 
             保存磁盘分区信息
         '''
-        #print server_partition_info
         insert_id = 0
         idcname,host_busi_ip,host_data_ip = "","",""
         for host_ip,info in server_partition_info.items():
@@ -284,7 +273,7 @@ class Parted_Disk_init(Init_Base):
                 insert_id = super(Parted_Disk_init, self).insert_advanced(sql,server_id,host_busi_ip,partitions['partitions_point'],partitions['block_num'],size,partitions['partition_name'],partitions['partition_alias_name'],partitions['partition_type'])
 
                 if insert_id > 0:
-                    print "update table partition_info success!"
+                    pass
 
 
     def get_search_ted_info(self):
@@ -343,6 +332,7 @@ class Parted_Disk_init(Init_Base):
                     return
 
                 resize = "resize2fs"
+
                 if len(partition_dic['opt']['partition_type']) > 0:
                     if  ext_rule.match(partition_dic['opt']['partition_type']):
                         resize = "resize2fs"
@@ -354,16 +344,15 @@ class Parted_Disk_init(Init_Base):
 
 
                 #size = int(partition_dic['ted']['partition_mount_point'][:-1]) - 10
-                size = '140G'
+                opt_size = '140G'
                 
-                remove_ted_cmd = "umount  %(ted_mount)s;lvremove %(ted)s;lvextend -L %(size)s %(opt)s;sed -i '/lvted/d' /etc/fstab;/usr/bin/nohup %(resize)s %(opt)s &" % {'ted_mount':partition_dic['ted']['partition_mount_point'],'ted':partition_dic['ted']['partition_mount_point'],'size':size,'resize':resize,'opt':partition_dic['opt']['partition_mount_point']}
+                remove_ted_cmd = "umount  %(ted_mount)s;lvremove -f %(ted)s;lvextend -L %(size)s %(opt)s;sed -i '/lvted/d' /etc/fstab;%(resize)s %(opt)s" % {'ted_mount':partition_dic['ted']['partition_mount_point'],'ted':partition_dic['ted']['partition_mount_point'],'size':opt_size,'resize':resize,'opt':partition_dic['opt']['partition_mount_point']}
 
                 deal_ssh.remote_ssh_key_exec(server_info,remove_ted_cmd)
 
 
 
             
-
 class Exec_partition_cls(Init_Base):
     '''
         执行划分分区 类
@@ -381,7 +370,7 @@ class Exec_partition_cls(Init_Base):
         '''
         new_partition_cmd,replace_partition_cmd = "",""
         data_partition = re.compile("(/data[0-9]*)")
-        search_partition = re.compile("/search")
+        search_partition = re.compile("/search(.*)")
 
 
         exsit_data_partition = False
@@ -389,7 +378,7 @@ class Exec_partition_cls(Init_Base):
 
 
         new_partition_cmd = "mkfs.xfs /dev/vdb;mkdir /data;echo \"/dev/vdb  /data  xfs     defaults,noatime,nodiratime     0  0\" >>  /etc/fstab;mount -a"
-        replace_partition_cmd = "umount /search;sed -i s/search/data/g /etc/fstab;mkdir /data ;mount -a;df -h"
+        replace_partition_cmd = "umount /dev/vdb;sed -i '/\/dev\/vdb/d' /etc/fstab;echo \"/dev/vdb  /data  xfs     defaults,noatime,nodiratime     0  0\" >>  /etc/fstab;mkdir /data ;mount -a;df -h"
 
         for host_ip in self.iplist:
             sql =  "select partition_mount_point,partition_name from partition_info where server_busi_ip in (select host_busi_ip from server_info where host_busi_ip = '%s' or host_data_ip = '%s') and (partition_name like '%%search%%' or partition_name like '%%data%%')"
@@ -400,14 +389,11 @@ class Exec_partition_cls(Init_Base):
             for partitions_data in result:
                 if data_partition.match(partitions_data['partition_name']):
                     exsit_data_partition = True
-                    exsit_partition = True
                 elif search_partition.match(partitions_data['partition_name']):
-                    if exsit_data_partition:
-                        exsit_partition = True
-                        continue
+                    exsit_search_partition = True
    
             if not exsit_data_partition:
-                if not exsit_partition:
+                if not exsit_search_partition:
                     result = deal_ssh.remote_ssh_key_exec_simple_online(host_ip,self.remote_user,new_partition_cmd)
                     if not result:
                         print "host: %s partition failed" % host_ip
@@ -419,161 +405,360 @@ class Exec_partition_cls(Init_Base):
                 print "exsit_data_partition"
 
 
+    def partition_new(self,host_ip,mount_dir,mount_type,mount_path):
+        '''
+            划分新分区信息
+        '''
 
-    def do_partition(self,tag,host_ip,path,old_mount_dir,new_mount_dir):
+        if mount_type == 'xfs':
+            format_str = "mkfs.xfs %s -f" % mount_path
+        elif mount_type == 'ext3':
+            format_str = "mkfs.ext3 %s -f " % mount_path
+        elif mount_type == 'ext4':
+            format_str = "mkfs.ext4 %s -f" % mount_path
+
+        cmd = "%(format_str)s;mkdir -p %(new_mount_dir)s;echo \"%(path)s %(new_mount_dir)s  xfs   defaults,noatime,nodiratime  0 0\" >> /etc/fstab" % {'new_mount_dir':mount_dir,'path':mount_path,'format_str':format_str}
+        deal_ssh.remote_ssh_key_exec_simple_online(host_ip,self.remote_user,cmd)
+        #return cmd
+    
+    def partition_rename(self,host_ip,new_mount_dir,new_mount_type,new_mount_path):
         '''
-            处理分区信息
+            重新挂载分区
         '''
+        cmd  = "mkdir -p %(new_mount_dir)s;echo \"%(path)s %(new_mount_dir)s  %(new_mount_type)s   defaults,noatime,nodiratime  0 0\" >> /etc/fstab" % {'new_mount_dir':new_mount_dir,'path':new_mount_path,'new_mount_type':new_mount_type}
+        deal_ssh.remote_ssh_key_exec_simple_online(host_ip,self.remote_user,cmd) 
+        #return cmd
+
+
+    def clean_partion_old(self,host_ip,old_mount_dir,old_mount_path):
+        '''
+            清理老的分区
+        '''
+        if old_mount_dir == "Null":
+            return 
+
         import string
         import random
-
         def id_generator(size=12, chars=string.ascii_lowercase + string.digits):
             return ''.join(random.choice(chars) for _ in range(size))
 
         str_sn = id_generator(12)
+        
 
-        print tag
-        if tag == 'replace':
-            cmd = "fuser -ck %(old_mount_dir)s;fuser -ck %(new_mount_dir)s;umount %(new_mount_dir)s;umount %(old_mount_dir)s;mkdir -p %(new_mount_dir)s;/bin/cp /etc/fstab /tmp/fstab.%(str_sn)s;sed -i '%(old_mount_dir)s/d' /etc/fstab;sed -i '%(new_mount_dir)s/d' /etc/fstab;echo \"%(path)s %(new_mount_dir)s  xfs   defaults,noatime,nodiratime  0 0\" >> /etc/fstab;mount -a" % {'old_mount_dir':old_mount_dir,'new_mount_dir':new_mount_dir,'str_sn':str_sn,'path':path}
+        new_mount_path = re.sub(r"/",r"\/",old_mount_path) 
+        cmd = "fuser -ck %(mount_path)s;umount %(old_mount_dir)s;sed -i '/%(new_mount_path)s/d' /etc/fstab;/bin/cp /etc/fstab /tmp/fstab.%(str_sn)s" % {'mount_path':old_mount_path,'str_sn':str_sn,'new_mount_path':new_mount_path,'old_mount_dir':old_mount_dir}
 
-        elif tag == 'new':
-            cmd = "mkdir -p %(new_mount_dir)s;/bin/cp /etc/fstab /tmp/fstab.%(str_sn)s;echo \"%(path)s %(new_mount_dir)s  xfs   defaults,noatime,nodiratime  0 0\" >> /etc/fstab;mount -a" % {'new_mount_dir':new_mount_dir,'str_sn':str_sn,'path':path}
-        else:
-            return
+        deal_ssh.remote_ssh_key_exec_simple_online(host_ip,self.remote_user,cmd)
+        #return cmd
 
+
+    def get_new_mount_info(self,package_type):
+        '''
+            获取新的(自定义) 数据盘大小和其他盘大小
+        '''
+        sql = "select data_one_disk_size,data_raid_info,data_disk_num,data_mount_dir,data_mount_dir_file_type,other_one_disk_size,other_raid_info,other_disk_num,other_mount_dir,other_mount_dir_file_type from pm_partition_rule where type = '%s'" 
+               
+        result = super(Exec_partition_cls, self).select_with_desc(sql,package_type)
+
+        #total_disk 硬盘大小
+        total_disk_data = 0
+        total_disk_other = 0
+
+        mount_info_dic = {}
+
+        for disk_info in result:
+            if disk_info['data_raid_info'] == 'raid-5':
+                total_disk_data = int(disk_info['data_one_disk_size'][:-1]) * (int(disk_info['data_disk_num']) - 1) 
+                if disk_info['other_raid_info'] == 'raid-5':
+                    total_disk_other = int(disk_info['other_one_disk_size'][:-1]) * (int(disk_info['other_disk_num']) - 1)
+                elif disk_info['other_raid_info'] == 'raid-10' or disk_info['other_raid_info'] == 'raid-1':
+                    total_disk_other = int(disk_info['other_one_disk_size'][:-1]) / 2
+                else:
+                    pass
+
+            elif disk_info['data_raid_info'] == 'raid-10':
+                total_disk_data = int(disk_info['data_one_disk_size'][:-1]) * int(disk_info['data_disk_num']) / 2
+
+                if disk_info['other_raid_info'] == 'raid-5':
+                    total_disk_other = int(disk_info['other_one_disk_size'][:-1]) * (int(disk_info['other_disk_num']) - 1)
+                elif disk_info['other_raid_info'] == 'raid-10' or disk_info['other_raid_info'] == 'raid-1':
+                    total_disk_other = (int(disk_info['other_one_disk_size'][:-1])*int(disk_info['other_disk_num']))/ 2
+                else:
+                    pass
+
+
+            mount_info_dic['data'] = {'total_disk_data':total_disk_data,'data_mount_dir':disk_info['data_mount_dir'],'data_mount_dir_file_type':disk_info['data_mount_dir_file_type']}
+
+            mount_info_dic['other'] = {'total_disk_other':total_disk_other,'other_mount_dir':disk_info['other_mount_dir'],'other_mount_dir_file_type':disk_info['other_mount_dir_file_type']}
+
+        return mount_info_dic
+
+
+    def compare_which_disk(self,standard_info,currently_mount_info_list):
+        '''
+            比较磁盘raid组大小,返回挂载目录等
+        '''
+        
+        '''
+        standard_info =
+        {'data': {'data_mount_dir': u'/data',
+          'data_mount_dir_file_type': u'xfs',
+          'total_disk_data': 3900},
+        'other': {'other_mount_dir': u'NA',
+           'other_mount_dir_file_type': u'xfs',
+           'total_disk_data': 0}}
+
+        currently_mount_info_list =
+           [{'/dev/sdd': {'relation': 'parent', 'size': '3625G'}},
+            {'/dev/sdd1': {'relation': 'child', 'size': '3625G'}}]
+        '''
+       
+        standard_data_size = 0
+        standard_other_size = 0
+
+        for cur_mount_info_key,cur_mount_info_value in currently_mount_info_list.items():
+                currently_size = cur_mount_info_value['size']
+                standard_data_size  = standard_info['data']['total_disk_data']
+                standard_other_size = standard_info['other']['total_disk_other']
+                
+                if (int(currently_size[:-1]) > ( standard_data_size - 350)) and (int(currently_size[:-1]) < (  standard_data_size + 350)):
+                    cur_mount_info_value['is_datadir'] = True
+                    cur_mount_info_value['mount_file_type'] = standard_info['data']['data_mount_dir_file_type']
+                    cur_mount_info_value['mount_dir'] = standard_info['data']['data_mount_dir']
+                    
+
+
+                if (int(currently_size[:-1]) > ( standard_other_size - 350)) and (int(currently_size[:-1]) < (  standard_other_size + 350)):
+
+                    cur_mount_info_value['is_datadir'] = False
+                    cur_mount_info_value['mount_file_type'] = standard_info['other']['other_mount_dir_file_type']
+                    cur_mount_info_value['mount_dir'] = standard_info['other']['other_mount_dir']
+
+
+        return currently_mount_info_list
+             
+
+    def set_machine_info(self,standard_info,currently_mount_info):
+        '''
+            返回挂载信息目录
+        '''
+        sort_mount_info_list = []
+        mount_info_list = {}
+
+        pattern = re.compile("(.*)(sd[b-z])$")
+        
+        for machine_item in currently_mount_info:
+            if pattern.match(machine_item['partition_mount_point']):
+                mount_info_list[machine_item['partition_mount_point']] = {'size':machine_item['partition_size']}
+                mount_info_list[machine_item['partition_mount_point']]['relation'] = 'parent'
+            else:
+                mount_info_list[machine_item['partition_mount_point']] = {'size':machine_item['partition_size']}
+                mount_info_list[machine_item['partition_mount_point']]['relation'] = 'child'
+ 
+        return self.compare_which_disk(standard_info,mount_info_list)
+
+
+    def  do_parted(self,host_ip,path,num):
+        '''
+            执行划分分区操作
+        '''
+        cmd = "parted %(path)s mklabel gpt -s;parted %(path)s mkpart primary 0 100%% -s;parted %(path)s name %(num)s data;" % {'path':path,'num':num}
+        #print cmd
+        deal_ssh.remote_ssh_key_exec_simple_online(host_ip,self.remote_user,cmd)
+
+    def finish_partition(self,host_ip):
+        cmd = "mount -a"
         deal_ssh.remote_ssh_key_exec_simple_online(host_ip,self.remote_user,cmd)
 
 
-    def set_pm_partition_info(self,pm_partition_data):
+    def get_partition_data_by_ssh(self,host_ip):
         '''
-            执行划分分区主函数
+            获取分区信息以及大小
         '''
+        data_disk_pattern = re.compile("(.*)sd[b-z][0-9]*(.*)")
+        #存放挂载点和挂载点大小
+        temp_mount_dic = {}
+        
+        machine_partition_dic =  {}
+        machine_partition_list = []
 
-        for host_ip in self.iplist:
-            for path,new_mount_dir in pm_partition_data.items():
-                if new_mount_dir == 'NA':
-                    continue
+        get_partition_cmd = "cat /proc/partitions"
 
-                sql = "select partition_name from partition_info where server_busi_ip IN (select host_busi_ip from server_info where host_busi_ip = '%s' or host_data_ip = '%s') and partition_mount_point = '%s'"
+        ssh_result = deal_ssh.remote_ssh_key_exec_simple_online(host_ip,self.remote_user,get_partition_cmd)
+
+        buf = StringIO.StringIO(ssh_result)
+        for line in buf.readlines():
+            line = line.strip()
+            if data_disk_pattern.match(line):
+                temp_mount_dic['partition_mount_point'] = "/dev/%s" % line.split()[3]
+                temp_mount_dic['partition_size'] = "%sG"  % str(int(line.split()[2])/1024/1024)            
+                machine_partition_list.append(temp_mount_dic)
+                machine_partition_dic[temp_mount_dic['partition_mount_point']] = temp_mount_dic['partition_size']
+                temp_mount_dic = {}
+
+        return machine_partition_list,machine_partition_dic
 
 
-                result  =  super(Exec_partition_cls, self).select_advanced(sql,host_ip,host_ip,path)
+    def check_partition(self,host_ip,mount_data_list):
+        '''
+            检查挂载目录，挂载类型，重新挂载分区
+        '''
+        db_mount_info_dic = {}
+        db_mount_info_list = []
 
-                old_mount_dir = result[0]
-                print old_mount_dir
-                if old_mount_dir == new_mount_dir:
-                    pass
-                elif old_mount_dir == "Null":
-                    self.do_partition('new',host_ip,path,old_mount_dir,new_mount_dir)
-                else:
-                    self.do_partition('replace',host_ip,path,old_mount_dir,new_mount_dir)
+        sql = "select partition_mount_point,partition_size,partition_name,partition_type from partition_info where server_busi_ip in (select host_busi_ip from server_info where host_busi_ip = '%s' or host_data_ip = '%s')  and partition_mount_point REGEXP '.*sd[b-z][0-9]*'"
+
+        db_mount_result = super(Exec_partition_cls, self).select_with_desc(sql,host_ip,host_ip)
+
+        #重做字典方便比对数据
+        for db_mount_info  in db_mount_result:
+            db_mount_info_dic[db_mount_info['partition_mount_point']] = {'old_mount_dir':db_mount_info['partition_name'],'old_mount_file_type':db_mount_info['partition_type'],'old_size':db_mount_info['partition_size']}
+
+        #pprint.pprint(mount_data_list)
+        #pprint.pprint(db_mount_info_dic)
+
+        for cur_mount_info in mount_data_list:
+            for mount_key,mount_value in cur_mount_info.items():
+                #挂载点一致
+                if mount_key in db_mount_info_dic:
+                    #分区大小一致
+                    if mount_value['size'] == db_mount_info_dic[mount_key]['old_size']:
+                        #有子分区/dev/sdb1,sdc1等
+                        if len(cur_mount_info) > 1:
+                            #挂载子分区一致
+                            if mount_value['relation'] == 'child':
+                                #挂载目录一致
+                                if mount_value['mount_dir'] == db_mount_info_dic[mount_key]['old_mount_dir']:
+                                    #挂载类型一致
+                                    if mount_value['mount_file_type'] == db_mount_info_dic[mount_key]['old_mount_file_type']:
+                                        break
+                                    else:
+                                        #重新按照标准格式化分区
+                                        self.clean_partion_old(host_ip,db_mount_info_dic[mount_key]['old_mount_dir'],mount_key)
+                                        self.partition_new(host_ip,mount_value['mount_dir'],mount_value['mount_file_type'],mount_key)
+                                else:
+                                    self.clean_partion_old(host_ip,db_mount_info_dic[mount_key]['old_mount_dir'],mount_key)
+                                    #挂载类型一致
+                                    if mount_value['mount_file_type'] == db_mount_info_dic[mount_key]['old_mount_file_type']:
+                                        #重命名目录
+                                        self.partition_rename(host_ip,mount_value['mount_dir'],mount_value['mount_file_type'],mount_key)
+                                    else:
+                                        #重新按照标准格式化分区
+                                        self.partition_new(host_ip,mount_value['mount_dir'],mount_value['mount_file_type'],mount_key)
+                            else:
+                                #卸载parent
+                                self.clean_partion_old(host_ip,db_mount_info_dic[mount_key]['old_mount_dir'],mount_key)
+                        ##没有子分区/dev/sdb1,sdc1等
+                        else:
+                            #新分区操作
+                            self.clean_partion_old(host_ip,db_mount_info_dic[mount_key]['old_mount_dir'],mount_key)
+                            #子分区命名为sdc1
+                            self.do_parted(host_ip,mount_key,'1')
+                            new_mount_path = mount_key + '1'
+                            self.partition_new(host_ip,mount_value['mount_dir'],mount_value['mount_file_type'],new_mount_path)
+                            break
                  
+                    #分区大小不一致
+                    else:
+                        #新分区操作
+                        self.clean_partion_old(host_ip,db_mount_info_dic[mount_key]['old_mount_dir'],mount_key)
+                        if mount_value['relation'] == 'parent': 
+                            #子分区命名为sdc1
+                            self.do_parted(host_ip,mount_key,'1')
+                            new_mount_path = mount_key + '1'
+                            self.partition_new(host_ip,mount_value['mount_dir'],mount_value['mount_file_type'],new_mount_path)
+                            break
+                        else:
+                            new_mount_key = mount_key[:-1]
+                            #子分区命名为sdc1
+                            self.do_parted(host_ip,new_mount_key,'1')
+                            self.partition_new(host_ip,mount_value['mount_dir'],mount_value['mount_file_type'],mount_key)
+                            break
+                    #卸载用
+                    
+                #挂载点不一致
+                else:
+                    if len(cur_mount_info) == 2:
+                        if mount_value['relation'] == 'parent': 
+                            #新分区操作
+                            self.do_parted(host_ip,mount_key,'1')
+                            new_mount_path = mount_key + '1'
+                            self.partition_new(host_ip,mount_value['mount_dir'],mount_value['mount_file_type'],new_mount_path)
+                            break
+                    else:
+                        #新分区操作
+                        self.do_parted(host_ip,mount_key,'1')
+                        new_mount_path = mount_key + '1'
+                        self.partition_new(host_ip,mount_value['mount_dir'],mount_value['mount_file_type'],new_mount_path)
+                        break
 
 
+        for cur_mount_info in mount_data_list:
+            for mount_key2,mount_value2 in cur_mount_info.items():
+                #挂载点一致
+                if mount_key2 in db_mount_info_dic:
+                    db_mount_info_dic.pop(mount_key2)
 
-    def get_pm_partition_info(self):
+        for key,data in db_mount_info_dic.items():
+            self.clean_partion_old(host_ip,data['old_mount_dir'],key)
+
+
+    def set_pm_partition_info(self):
         '''
             处理实体机分区信息
         '''
-
+        machine_partition_data = {}
         disk_num = re.compile('.*sdb[0-9]*')
-
-        disk_info = re.compile("/dev/(sd[a-z])[0-9]*")
-
-        temp_size = 0
-        temp_disk_path_info = []
-        temp_disk_path_dic =  {}
-
-        big_disk_info = []
-        small_disk_info = []
+        group_disk_info = re.compile("/dev/(sd[a-z])[0-9]*")
 
         for server_info in self.pmlist: 
+            temp_size = 0
             host_ip = server_info['client_server']['client_ip']
+            machine_partition_list,machine_partition_dic = self.get_partition_data_by_ssh(host_ip)
+                  
+            temp_disk_path_dic = {}
+            temp_disk_path_info = []
+            #分类，将sdb sdb1 sdb2等分到同一组内,主要是为了同分区做比对
+            #machine_partition_list 为实时数据，不是数据库查询出的数据
+            for disk_data_A in machine_partition_list:
+                matchObjA  = group_disk_info.match(disk_data_A['partition_mount_point'])
+                for disk_data_B in machine_partition_list:
+                    matchObjB  = group_disk_info.match(disk_data_B['partition_mount_point'])
+                    if matchObjA.group(1) == matchObjB.group(1):
+                        key = matchObjA.group(1)
+                        temp_disk_path_info.append(disk_data_B['partition_mount_point'])
+                temp_disk_path_dic[key] = temp_disk_path_info
+                temp_disk_path_info = []
+
+
+
+            #依据套餐类型划分分区
             package_type = server_info['client_server']['server_package']
-        
-            #重要 查询分区表，得到sdb sdc等硬件路径，根据路径区分 哪些路径是正确的,哪些是冗余的
-            sql = "select partition_mount_point,partition_size from partition_info where server_busi_ip in (select host_busi_ip from server_info where host_busi_ip = '%s' or host_data_ip = '%s')  and partition_mount_point REGEXP '.*sd[b-z][0-9]*'"
 
-            result = super(Exec_partition_cls, self).select_with_desc(sql,host_ip,host_ip)
-
-            if len(result) > 0:
-                #分类，将sdb sdb1 sdb2等分到同一组内
-                for disk_data_A in result:
-                    matchObjA  = disk_info.match(disk_data_A['partition_mount_point'])
-                    for disk_data_B in result:
-                        matchObjB  = disk_info.match(disk_data_B['partition_mount_point'])
-                        if matchObjA.group(1) == matchObjB.group(1):
-                            key = matchObjA.group(1)
-                            temp_disk_path_info.append(disk_data_B['partition_mount_point'])
-                    temp_disk_path_dic[key] = temp_disk_path_info
-                    temp_disk_path_info = []
-
-                # #去重，如果同时存在sdb sdb1取sdb1 
-                will_be_parted_path = []
-                for key,value in temp_disk_path_dic.items():
-                    if len(value) == 1:
-                        will_be_parted_path.append(value[0])
-                    else:
-                        if value[0] > value[1]:
-                            will_be_parted_path.append(value[0])
-                        else:
-                            will_be_parted_path.append(value[1])
+            #依据套餐类型存放数据盘和other盘的大小
+            total_disk_size_dic = {}
+            total_disk_size_dic = self.get_new_mount_info(package_type)
 
 
-                tempdic = {}
-                for raw_disk_info in result:
-                    for disk_path in will_be_parted_path:
-                        if raw_disk_info['partition_mount_point'] == disk_path:
-                            tempdic[disk_path] = raw_disk_info['partition_size']
+            #比较挂载目录，挂载类型,挂载点
+            mount_info_list = []
+            group_dic = {}
+            mount_info_final = self.set_machine_info(total_disk_size_dic,machine_partition_list)
+            
+            #分组将/dev/sdb /dev/sdb1 分到一组，/dev/sdc,/dev/sdc1 分到一组
+            for group_m_key,group_m_value in temp_disk_path_dic.items():
+                for value in group_m_value:
+                    group_dic[value] = mount_info_final[value]
+                
+                mount_info_list.append(group_dic)
+                group_dic = {}
+            
+
+            #分区      
+            self.check_partition(host_ip,mount_info_list)    
+            self.finish_partition(host_ip)
 
 
-              
-
-                sql = "select data_one_disk_size,data_raid_info,data_disk_num,data_mount_dir,other_one_disk_size,other_raid_info,other_disk_num,other_mount_dir from pm_partition_rule where type = '%s'" 
-               
-                result = super(Exec_partition_cls, self).select_with_desc(sql,package_type)
-
-                #total_disk 硬盘大小
-                total_disk_data = 0
-                total_disk_other = 0
-
-                mount_info_dic = {}
-
-                for disk_info in result:
-                    if disk_info['data_raid_info'] == 'raid-5':
-                        total_disk_data = int(disk_info['data_one_disk_size'][:-1]) * (int(disk_info['data_disk_num']) - 1) 
-                        if disk_info['other_raid_info'] == 'raid-5':
-                            total_disk_other = int(disk_info['other_one_disk_size'][:-1]) * (int(disk_info['other_disk_num']) - 1)
-                        elif disk_info['other_raid_info'] == 'raid-10' or disk_info['other_raid_info'] == 'raid-1':
-                            total_disk_other = int(disk_info['other_one_disk_size'][:-1]) / 2
-                        else:
-                            pass
-
-                    elif disk_info['data_raid_info'] == 'raid-10':
-                        total_disk_data = int(disk_info['other_one_disk_size'][:-1]) * int(disk_data_B['other_disk_num']) / 2
-
-                        if disk_info['other_raid_info'] == 'raid-5':
-                            total_disk_other = int(disk_info['other_one_disk_size'][:-1]) * (int(disk_info['other_disk_num']) - 1)
-                        elif disk_info['other_raid_info'] == 'raid-10' or disk_info['other_raid_info'] == 'raid-1':
-                            total_disk_other = int(disk_info['other_one_disk_size'][:-1]) / 2
-                        else:
-                            pass
-
-
-
-                tempdic2 = {}
-
-                for path,size in tempdic.items():
-                    for disk_info in result:
-                        if (int(size[:-1]) > ( total_disk_data - 200)) and (int(size[:-1]) < (  total_disk_data + 200)):
-                            tempdic2[path] = disk_info['data_mount_dir']
-
-                        elif (int(size[:-1]) > ( total_disk_other - 200)) and (int(size[:-1]) < (  total_disk_other + 200)):
-                            tempdic2[path] = disk_info['other_mount_dir']
-                        else:
-                            pass
-
-                return tempdic2
 
 
 

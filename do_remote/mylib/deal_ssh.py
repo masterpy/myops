@@ -11,8 +11,7 @@ def remote_ssh_key_exec(remote_server_info,command):
     private_key = paramiko.DSSKey.from_private_key_file(key_file)
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    logger = paramiko.util.logging.getLogger()
-    paramiko.util.log_to_file('filename.log')
+
 
     if 'client_server' in remote_server_info:
         for key,value in remote_server_info.items():
@@ -44,8 +43,6 @@ def remote_ssh_password_exec(remote_server_info,command):
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     ssh.load_system_host_keys()
-    logger = paramiko.util.logging.getLogger()
-    paramiko.util.log_to_file('filename.log')
 
     if 'client_server' in remote_server_info:
         for key,value in remote_server_info.items():
@@ -93,6 +90,27 @@ def remote_ssh_key_exec_simple_online(host,user,command):
 
     else:
         return result
+
+def remote_ssh_password_simple_online(host,user,passwd,cmd):
+    '''
+        处理密码
+    '''
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    try:
+        ssh.connect(hostname = host, username = user, password=passwd)
+        stdin,stdout,stderr = ssh.exec_command(cmd)
+        result = stdout.read()
+        error  = stderr.read()
+        ssh.close()
+
+    except Exception,e:
+        return False
+    else:
+        return result
+
+
+
 
 def remote_ssh_key_exec_simple(host,user,command):
     '''
@@ -146,7 +164,7 @@ def remote_scp(host,user):
     '''
     port = 22
     key_file = "/root/.ssh/id_dsa"
-    
+
     transport = paramiko.Transport((host,port))
     private_key = paramiko.DSSKey.from_private_key_file(key_file)
     transport.connect(username=user,pkey = private_key)
@@ -164,3 +182,19 @@ def remote_scp(host,user):
     else:
         return True
         #return result
+
+def trans_file(host,user,pwd,src,dst):
+    port = 22
+    transport = paramiko.Transport((host,port))
+    transport.connect(username = user, password=pwd)
+    sftp = paramiko.SFTPClient.from_transport(transport)
+    
+    try:
+        sftp.put(src,dst)
+        transport.close()
+        sftp.close()
+    except Exception,e:
+        print e
+        return False
+    else:
+        return True

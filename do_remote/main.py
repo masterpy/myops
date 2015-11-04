@@ -7,6 +7,17 @@ from  mylib import *
 import argparse
 
 
+def clean_relation_ship(machine_data):
+    '''
+        清理信任
+    '''
+    if len(machine_data) > 0:
+        for machine in machine_data:
+            team = machine['client_server']['group']
+            if team == 'online_db' or team == 'online_404':
+                deal_password.del_relation_server(machine)
+            else:
+                return 
 
 def check_network(ip):
     '''
@@ -20,23 +31,33 @@ def check_network(ip):
     return True
 
 
-def init(machine_data,db_data,ca_data):
+def init_machine_info(machine_ip_list):
+    '''
+        添加hostname,安装puppet客户端软件
+    '''
+    init_server_info = common_lib.get_remote_server_info('init.conf')
+    #添加hostname
+    tools_cls = deal_other.Tools_cls(machine_ip_list,init_server_info['ca_server'],init_server_info['client_server'])
+    hostname_list = tools_cls.add_hostname()
+    if isinstance(hostname_list,bool):
+        print "add hostname failed."
+    else:
+        #清理ca证书
+        tools_cls.clean_ca_cert(hostname_list)
+        #安装软件
+        if not common_lib.install_soft_programe(machine_ip_list,init_server_info['client_server']):
+            print "install soft failed."
+
+
+def init(machine_data,db_data):
     '''
         初始化
     '''
-    #添加hostname
-    tools_cls = deal_other.Tools_cls(machine_data,ca_data)
     #初始化，修改密码，保存密码以及服务器相关信息
     passwd_cls = deal_password.Control_key(machine_data,db_data)
-    passwd_cls.add_relation_server()
-
-    hostname = tools_cls.add_hostname()
-    
+    passwd_cls.add_relation_server()    
     passwd_cls.set_server_status()
 
-    #清理ca证书
-    if tools_cls.clean_ca_cert(hostname):
-        print "clean ca success!"
 
 def check_process(machine_data,db_data):
     '''
@@ -52,7 +73,6 @@ def set_memory(machine_data,db_data,tag):
     '''
         獲取內存信息
     '''
-    print "set_memory"
     memory_cls = deal_memory.Memory_cls(machine_data,db_data)
     
     if tag == "vm":
@@ -63,9 +83,18 @@ def set_memory(machine_data,db_data,tag):
 def get_disk_info(machine_data,db_data):
     '''
         检查硬盘信息，保存硬盘信息
-    '''
+    '''    
     raw_disk_cls = deal_disk_raid.Deal_Raid_info(machine_data,db_data)
     raw_disk_cls.get_disk_info()
+
+    set_disk_info = deal_pm_disk_info.Deal_Pm_Disk_Info(machine_data,db_data)
+    set_disk_info.update_pm_info()
+
+
+def check_partion_info(machine_data,db_data):
+    partition_cls = deal_partition.Parted_Disk_init(machine_data,db_data)
+    partition_data = partition_cls.get_init_partition_info()
+    partition_cls.save_partition_info(partition_data)
 
 def get_partition_info(machine_data,db_data):
     '''
@@ -154,7 +183,7 @@ def do_init_info(iplist,pmlist,vmlist):
 
     if len(pmlist) > 0:
         #初始化实体机
-        #init(pmlist,init_server_info['db_server'],init_server_info['ca_server'])
+        init(pmlist,init_server_info['db_server'])
         #获取磁盘信息
         get_disk_info(pmlist,init_server_info['db_server'])
         #获取实体机分区信息
@@ -164,30 +193,22 @@ def do_init_info(iplist,pmlist,vmlist):
         # #检查进程
         check_process(pmlist,init_server_info['db_server'])
         # #更新puppet配置
-        # set_puppet_config(pmlist,init_server_info['db_server'],(init_server_info['pupper_server_1'],init_server_info['pupper_server_2']))
 
-    # elif len(vmlist) > 0:
-    #     #初始化虚机
-    #     init(vmlist,init_server_info['db_server'],init_server_info['ca_server'])
+    elif len(vmlist) > 0:
+        pass
+        #初始化虚机
+        init(vmlist,init_server_info['db_server'])
 
-    #     #获取虚拟机分区信息
-    #     get_partition_info(vmlist,init_server_info['db_server'])
+        #获取虚拟机分区信息
+        get_partition_info(vmlist,init_server_info['db_server'])
 
-    #     #獲取內存信息
-    #     set_memory(vmlist,init_server_info['db_server'],"vm")
+        #獲取內存信息
+        set_memory(vmlist,init_server_info['db_server'],"vm")
 
-    #     #检查进程
-    #     check_process(vmlist,init_server_info['db_server'])
-    #     #更新puppet配置
-    #     set_puppet_config(vmlist,init_server_info['db_server'],(init_server_info['pupper_server_1'],init_server_info['pupper_server_2']))
-    
-    # #清理puppet配置
-    # close_puppet_config((init_server_info['pupper_server_1'],init_server_info['pupper_server_2']))
-
-    # #安装软件
-    # if common_lib.install_soft_programe(iplist):
-    #     #更新服务器状态
-    #     process_cls.finish_machine_status(iplist)
+        #检查进程
+        check_process(vmlist,init_server_info['db_server'])
+        
+    process_cls.finish_machine_status(iplist)
 
 
 def set_partition_info(iplist,pmlist,vmlist):
@@ -208,11 +229,12 @@ def set_partition_info(iplist,pmlist,vmlist):
         #检查raid并重新划分
         raw_disk_cls.set_disk_info()
         #重新刷新数据库
-        raw_disk_cls.get_disk_info()
-        #获取分区信息
-        pm_info = partion_disk_cls.get_pm_partition_info()
+        #raw_disk_cls.get_disk_info()
         #设置分区信息
-        partion_disk_cls.set_pm_partition_info(pm_info)
+
+        partion_disk_cls.set_pm_partition_info()
+        #重新检查分区信息
+        check_partion_info(pmlist,init_server_info['db_server'])
 
     if len(vmlist) > 0: 
         #处理虚机分区信息
@@ -228,10 +250,15 @@ def main(tag):
         return
 
     if tag == "init":
+        init_machine_info(iplist)
+
+    elif tag == "set":
         do_init_info(iplist,pmlist,vmlist)
+
     elif tag == "do":
         set_partition_info(iplist,pmlist,vmlist)
-
+        clean_relation_ship(pmlist)
+        clean_relation_ship(vmlist)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Init machine')
@@ -241,5 +268,7 @@ if __name__ == '__main__':
         main("init")
     elif results.action == "do":
         main("do")
+    elif results.action == "set":
+        main("set")
     else:
         parser.print_help()

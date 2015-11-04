@@ -1,28 +1,51 @@
-foo = """
-this is 
-a multi-line string.
-"""
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 
-def f1(foo=foo): return iter(foo.splitlines())
+import paramiko
 
-def f2(foo=foo):
-    retval = ''
-    for char in foo:
-        retval += char if not char == '\n' else ''
-        if char == '\n':
-            yield retval
-            retval = ''
-    if retval:
-        yield retval
+def remote_ssh_key_exec_simple_online(host,user,command):
+    '''
+        远程执行 use key
+    '''
+    key_file = "/root/.ssh/id_dsa"
+    private_key = paramiko.DSSKey.from_private_key_file(key_file)
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-def f3(foo=foo):
-    prevnl = -1
-    while True:
-      nextnl = foo.find('\n', prevnl + 1)
-      if nextnl < 0: break
-      yield foo[prevnl + 1:nextnl]
-      prevnl = nextnl
+    try:
+        client.connect(hostname = host, username = user,pkey  = private_key)
+        stdin,stdout,sterr = client.exec_command(command,timeout = 15)
+        result = stdout.read()
+        error  = sterr.read()
+        client.close()
+
+    except Exception,e:
+        print e
+        return False
+
+    else:
+        return result
+
+
+def trans_file(host,user,pwd,src,dst):
+    port = 22
+    transport = paramiko.Transport((host,port))
+    transport.connect(username = user, password=pwd)
+    sftp = paramiko.SFTPClient.from_transport(transport)
+    
+    try:
+        sftp.put(src,dst)
+        transport.close()
+        sftp.close()
+
+    except Exception,e:
+        print e
+        return False
+
+    else:
+        return True
 
 if __name__ == '__main__':
-  for f in f1, f2, f3:
-    print list(f())
+    src = "/opt/opbin/do_remote/scripts/init_env.sh"
+    dst = "/usr/local/src/init_env.sh"
+    trans_file('10.134.106.21','root','noSafeNoWork@2014',src,dst)

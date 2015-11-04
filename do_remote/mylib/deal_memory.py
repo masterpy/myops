@@ -36,9 +36,9 @@ class Memory_cls(Init_Base):
 
 
             if self.save_memory_info(host_ip,templist):
-                print "host: %s save_memory_info success!"
+                print "host: %s save_memory_info success!" %  host_ip
             else:
-                print "host: %s save_memory_info failed!"
+                print "host: %s save_memory_info failed!"  % host_ip
 
             templist = []
         
@@ -115,9 +115,9 @@ class Memory_cls(Init_Base):
 
 
             if self.save_memory_info(host_ip,templist):
-                print "host: %s save_memory_info success!"
+                print "host: %s save_memory_info success!" % host_ip
             else:
-                print "host: %s save_memory_info failed!"
+                print "host: %s save_memory_info failed!" % host_ip
 
             templist = []
 
@@ -131,7 +131,8 @@ class Memory_cls(Init_Base):
             server_busi_ip = result[0][1] 
         else:
             server_id = -1 
-         #先清理表
+        
+        #先清理表
         sql  = "delete from memory_info where server_busi_ip = '%s'"
         super(Memory_cls,self).delete(sql,server_busi_ip) 
         sum_size = 0
@@ -146,7 +147,7 @@ class Memory_cls(Init_Base):
             insert_id = super(Memory_cls,self).insert_advanced(sql,server_id,server_busi_ip,data['memory_size'],data['memory_type'],data['memory_speed'])
             
             if insert_id > 0:
-                print "update table memory_info success!"
+                pass
 
             else:
                 print "update table memory_info failed!"

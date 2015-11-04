@@ -124,6 +124,7 @@ class Init_Base(object):
     def insert(self, table, *args, **kwargs):
         values = None
         query = "INSERT INTO %s " % table
+        #print query
         if kwargs:
             keys = kwargs.keys()
             values = tuple(kwargs.values())
@@ -160,7 +161,7 @@ class Init_Base(object):
 
     def select_advanced(self, sql, *args):
         query = sql % args
-        print query
+        #print query
         self.__open()
         self.__session.execute(query)
         number_rows = self.__session.rowcount
@@ -179,7 +180,7 @@ class Init_Base(object):
         #print args
         #print sql
         query = sql % args
-        print query
+        #print query
         self.__open_for_desc()
         self.__session.execute(query)
         number_rows = self.__session.rowcount

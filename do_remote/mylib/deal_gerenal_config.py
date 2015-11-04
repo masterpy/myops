@@ -11,8 +11,6 @@ class Genenal_Puppet_config(Init_Base):
         生成puppet配置类
     '''
     def __init__(self,init_server_info,db_server_info):
-        print init_server_info
-        print db_server_info
         super(Genenal_Puppet_config, self).__init__(init_server_info,db_server_info)
 
     def genenal_host_config(self):
@@ -36,7 +34,7 @@ class Genenal_Puppet_config(Init_Base):
                 elif group == "online_db" or group == "db":
                     temp_str2 += ("\'"+result+"\""  + ",")
 
-
+ 
         web_str = temp_str1[:-1]
      
 

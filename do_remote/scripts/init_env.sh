@@ -34,9 +34,10 @@ function define_config()
 
     #step3 :同步配置
     rm -rf /var/lib/puppet/*
-    puppet agent --test
+    puppet agent -t
     service mcollective restart
     chkconfig  mcollective on
+
 
 }
 
@@ -76,18 +77,19 @@ function python_tool_install()
     unzip setuptools-11.3.1.zip
     cd setuptools-11.3.1
     /usr/local/python/bin/python setup.py install
+    cd ..
     rm -rf setuptools-11.3.1
     rm -f setuptools-11.3.1.zip
-    cd ..
     tar zxf IPy-0.83.tar.gz
     cd IPy-0.83
     /usr/local/python/bin/python setup.py install
+    cd ..
     rm -f IPy-0.83.tar.gz
     rm -rf IPy-0.83
-    cd ..
     tar zxf netifaces-0.10.4.tar.gz
     cd netifaces-0.10.4
     /usr/local/python/bin/python setup.py install
+    cd ..
     rm -rf netifaces-0.10.4
     rm -f netifaces-0.10.4.tar.gz
 }
@@ -125,6 +127,8 @@ function yum_gerenal()
 ###                                      ###
 function install_rhel5_yum_repo()
 {
+    yum  -y remove mcollective*
+    yum -y remove puppet*
     mv /etc/yum.repos.d  /etc/yum.repos.d.BAK
     mkdir /etc/yum.repos.d
     rsync  houston.repos.sogou-inc.com::SRC/conf/yum_repo/sys_rhel5.repo  /etc/yum.repos.d/
@@ -142,12 +146,15 @@ function install_rhel5_yum_repo()
 ### 
 function install_rhel6_yum_repo()
 {
+    yum remove mcollective*
+    yum remove puppet*
     mv /etc/yum.repos.d  /etc/yum.repos.d.BAK
     mkdir /etc/yum.repos.d
     rsync  houston.repos.sogou-inc.com::SRC/conf/yum_repo/sys_rhel6.repo  /etc/yum.repos.d/
 
     yum clean all
     yum -y install mcollective  puppet  facter  mcollective-puppet-agent mcollective-puppet-common
+    python_tool_install
 
     rm -rf /etc/yum.repos.d
     mv /etc/yum.repos.d.BAK /etc/yum.repos.d
@@ -169,10 +176,10 @@ function check_result()
     fi  
 }
 
-
+echo "10.139.45.69   houston.repos.sogou-inc.com" >> /etc/hosts
 yum_gerenal
 judge_sys_release
 define_config
 check_result
-
+sed -i '/10.139.45.69/d' /etc/hosts
 
