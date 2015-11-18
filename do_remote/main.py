@@ -47,6 +47,7 @@ def init_machine_info(machine_ip_list):
         #安装软件
         if not common_lib.install_soft_programe(machine_ip_list,init_server_info['client_server']):
             print "install soft failed."
+        
 
 
 def init(machine_data,db_data):
@@ -125,7 +126,7 @@ def close_puppet_config(puppet_data):
     deal_gerenal_config.close_host_config(puppet_data)
 
 
-def get_init_info():
+def get_init_info(source_filename):
     '''
         收集信息和安装软件
     '''
@@ -136,7 +137,10 @@ def get_init_info():
     pmlist = [] #实体机列表
     vmlist = [] #虚机列表
 
-    filename = "/tmp/machine.list"
+    if len(source_filename) == 0 :
+        return 
+    else:
+        filename = source_filename
 
 
     init_server_info = common_lib.get_remote_server_info('init.conf')
@@ -163,9 +167,9 @@ def get_init_info():
 
             iplist.append(tempdic['client_ip'])
 
-            if tempdic['machine_type'] == "pm":
+            if tempdic['machine_type'].lower() == "pm":
                 pmlist.append(tempdic2)
-            elif tempdic['machine_type'] == "vm":
+            elif tempdic['machine_type'].lower() == "vm":
                 vmlist.append(tempdic2)
             else:
                 print "no exist this machine: %s type!" % tempdic['client_ip']
@@ -242,9 +246,9 @@ def set_partition_info(iplist,pmlist,vmlist):
 
   
 
-def main(tag):
+def main(tag,source_filename=""):
     iplist,pmlist,vmlist = "","",""
-    iplist,pmlist,vmlist = get_init_info()
+    iplist,pmlist,vmlist = get_init_info(source_filename)
     if len(iplist) == 0:
         print "No Machines can be init!"
         return
@@ -263,12 +267,19 @@ def main(tag):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Init machine')
     parser.add_argument('-o', action="store", dest="action",help="操作机器 -o init 初始化 -o do 执行分区操作")
+    parser.add_argument('-f', action="store", dest="filename",help="-f 指定配置文件,默认/tmp/machine.list")
     results = parser.parse_args()
+
+    if not results.filename:
+        source_filename = "/tmp/machine.list"
+    else:
+        source_filename = results.filename
+
     if results.action == "init":
-        main("init")
+        main("init",source_filename)
     elif results.action == "do":
-        main("do")
+        main("do",source_filename)
     elif results.action == "set":
-        main("set")
+        main("set",source_filename)
     else:
         parser.print_help()

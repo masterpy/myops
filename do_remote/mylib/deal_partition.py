@@ -375,7 +375,7 @@ class Exec_partition_cls(Init_Base):
 
         exsit_data_partition = False
         exsit_partition = False
-
+        exsit_search_partition  = False
 
         new_partition_cmd = "mkfs.xfs /dev/vdb;mkdir /data;echo \"/dev/vdb  /data  xfs     defaults,noatime,nodiratime     0  0\" >>  /etc/fstab;mount -a"
         replace_partition_cmd = "umount /dev/vdb;sed -i '/\/dev\/vdb/d' /etc/fstab;echo \"/dev/vdb  /data  xfs     defaults,noatime,nodiratime     0  0\" >>  /etc/fstab;mkdir /data ;mount -a;df -h"
@@ -459,7 +459,6 @@ class Exec_partition_cls(Init_Base):
         sql = "select data_one_disk_size,data_raid_info,data_disk_num,data_mount_dir,data_mount_dir_file_type,other_one_disk_size,other_raid_info,other_disk_num,other_mount_dir,other_mount_dir_file_type from pm_partition_rule where type = '%s'" 
                
         result = super(Exec_partition_cls, self).select_with_desc(sql,package_type)
-
         #total_disk 硬盘大小
         total_disk_data = 0
         total_disk_other = 0
@@ -472,7 +471,7 @@ class Exec_partition_cls(Init_Base):
                 if disk_info['other_raid_info'] == 'raid-5':
                     total_disk_other = int(disk_info['other_one_disk_size'][:-1]) * (int(disk_info['other_disk_num']) - 1)
                 elif disk_info['other_raid_info'] == 'raid-10' or disk_info['other_raid_info'] == 'raid-1':
-                    total_disk_other = int(disk_info['other_one_disk_size'][:-1]) / 2
+                    total_disk_other = (int(disk_info['other_one_disk_size'][:-1])*int(disk_info['other_disk_num']))/ 2
                 else:
                     pass
 
@@ -483,6 +482,7 @@ class Exec_partition_cls(Init_Base):
                     total_disk_other = int(disk_info['other_one_disk_size'][:-1]) * (int(disk_info['other_disk_num']) - 1)
                 elif disk_info['other_raid_info'] == 'raid-10' or disk_info['other_raid_info'] == 'raid-1':
                     total_disk_other = (int(disk_info['other_one_disk_size'][:-1])*int(disk_info['other_disk_num']))/ 2
+
                 else:
                     pass
 
@@ -490,6 +490,7 @@ class Exec_partition_cls(Init_Base):
             mount_info_dic['data'] = {'total_disk_data':total_disk_data,'data_mount_dir':disk_info['data_mount_dir'],'data_mount_dir_file_type':disk_info['data_mount_dir_file_type']}
 
             mount_info_dic['other'] = {'total_disk_other':total_disk_other,'other_mount_dir':disk_info['other_mount_dir'],'other_mount_dir_file_type':disk_info['other_mount_dir_file_type']}
+
 
         return mount_info_dic
 
@@ -512,30 +513,42 @@ class Exec_partition_cls(Init_Base):
            [{'/dev/sdd': {'relation': 'parent', 'size': '3625G'}},
             {'/dev/sdd1': {'relation': 'child', 'size': '3625G'}}]
         '''
-       
+
+        final_mount_list = {}
+        final_mount_list_value = {}
         standard_data_size = 0
         standard_other_size = 0
+
 
         for cur_mount_info_key,cur_mount_info_value in currently_mount_info_list.items():
                 currently_size = cur_mount_info_value['size']
                 standard_data_size  = standard_info['data']['total_disk_data']
                 standard_other_size = standard_info['other']['total_disk_other']
+                final_mount_list_value = cur_mount_info_value.copy()
                 
-                if (int(currently_size[:-1]) > ( standard_data_size - 350)) and (int(currently_size[:-1]) < (  standard_data_size + 350)):
-                    cur_mount_info_value['is_datadir'] = True
-                    cur_mount_info_value['mount_file_type'] = standard_info['data']['data_mount_dir_file_type']
-                    cur_mount_info_value['mount_dir'] = standard_info['data']['data_mount_dir']
-                    
+                #pprint.pprint(standard_data_size)
+                #pprint.pprint(currently_size)
+                if (int(currently_size[:-1]) > ( standard_data_size - 10)) and (int(currently_size[:-1]) < (  standard_data_size + 10)):
+                    final_mount_list_value['is_datadir'] = True
+                    final_mount_list_value['mount_file_type'] = standard_info['data']['data_mount_dir_file_type']
+                    final_mount_list_value['mount_dir'] = standard_info['data']['data_mount_dir']
+                    final_mount_list[cur_mount_info_key] = final_mount_list_value
 
+                if (int(currently_size[:-1]) > ( standard_other_size - 10)) and (int(currently_size[:-1]) < (  standard_other_size + 10)):
+                    final_mount_list_value['is_datadir'] = False
+                    final_mount_list_value['mount_file_type'] = standard_info['other']['other_mount_dir_file_type']
+                    final_mount_list_value['mount_dir'] = standard_info['other']['other_mount_dir']
+                    final_mount_list[cur_mount_info_key] = final_mount_list_value
 
-                if (int(currently_size[:-1]) > ( standard_other_size - 350)) and (int(currently_size[:-1]) < (  standard_other_size + 350)):
+                #数据分区的子分区大小和实际大小不一致
+                if (int(currently_size[:-1]) > ( standard_other_size + 50)) and (int(currently_size[:-1]) < (  standard_data_size - 50)):
 
-                    cur_mount_info_value['is_datadir'] = False
-                    cur_mount_info_value['mount_file_type'] = standard_info['other']['other_mount_dir_file_type']
-                    cur_mount_info_value['mount_dir'] = standard_info['other']['other_mount_dir']
+                    final_mount_list_value['is_datadir'] = True
+                    final_mount_list_value['mount_file_type'] = standard_info['data']['data_mount_dir_file_type']
+                    final_mount_list_value['mount_dir'] = standard_info['data']['data_mount_dir']
+                    final_mount_list[cur_mount_info_key] = final_mount_list_value
 
-
-        return currently_mount_info_list
+        return final_mount_list
              
 
     def set_machine_info(self,standard_info,currently_mount_info):
@@ -583,6 +596,8 @@ class Exec_partition_cls(Init_Base):
         machine_partition_list = []
 
         get_partition_cmd = "cat /proc/partitions"
+
+        time.sleep(2)
 
         ssh_result = deal_ssh.remote_ssh_key_exec_simple_online(host_ip,self.remote_user,get_partition_cmd)
 
@@ -637,6 +652,7 @@ class Exec_partition_cls(Init_Base):
                                         self.clean_partion_old(host_ip,db_mount_info_dic[mount_key]['old_mount_dir'],mount_key)
                                         self.partition_new(host_ip,mount_value['mount_dir'],mount_value['mount_file_type'],mount_key)
                                 else:
+
                                     self.clean_partion_old(host_ip,db_mount_info_dic[mount_key]['old_mount_dir'],mount_key)
                                     #挂载类型一致
                                     if mount_value['mount_file_type'] == db_mount_info_dic[mount_key]['old_mount_file_type']:
@@ -740,11 +756,15 @@ class Exec_partition_cls(Init_Base):
             total_disk_size_dic = self.get_new_mount_info(package_type)
 
 
+
             #比较挂载目录，挂载类型,挂载点
             mount_info_list = []
             group_dic = {}
             mount_info_final = self.set_machine_info(total_disk_size_dic,machine_partition_list)
             
+
+            #print mount_info_final
+
             #分组将/dev/sdb /dev/sdb1 分到一组，/dev/sdc,/dev/sdc1 分到一组
             for group_m_key,group_m_value in temp_disk_path_dic.items():
                 for value in group_m_value:
@@ -752,8 +772,6 @@ class Exec_partition_cls(Init_Base):
                 
                 mount_info_list.append(group_dic)
                 group_dic = {}
-            
-
             #分区      
             self.check_partition(host_ip,mount_info_list)    
             self.finish_partition(host_ip)

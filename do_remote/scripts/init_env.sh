@@ -92,6 +92,12 @@ function python_tool_install()
     cd ..
     rm -rf netifaces-0.10.4
     rm -f netifaces-0.10.4.tar.gz
+    tar zxf pip-6.0.6.tar.gz
+    cd  pip-6.0.6
+    /usr/local/python/bin/python setup.py install
+    cd ..
+    rm -rf pip-6.0.6.tar.gz
+    rm -rf pip-6.0.6
 }
 
 ###                                      ###
@@ -146,8 +152,8 @@ function install_rhel5_yum_repo()
 ### 
 function install_rhel6_yum_repo()
 {
-    yum remove mcollective*
-    yum remove puppet*
+    yum remove mcollective* -y
+    yum remove puppet* -y
     mv /etc/yum.repos.d  /etc/yum.repos.d.BAK
     mkdir /etc/yum.repos.d
     rsync  houston.repos.sogou-inc.com::SRC/conf/yum_repo/sys_rhel6.repo  /etc/yum.repos.d/

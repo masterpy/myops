@@ -212,10 +212,11 @@ def install_soft_programe(host_ip_list,machine_info):
         deal_ssh.trans_file(host_ip,remote_user,remote_passwd,src_file,dst_file)
         cmd_remote = "bash %s" % (dst_file)
         result  = deal_ssh.remote_ssh_password_simple_online(host_ip,remote_user,remote_passwd,cmd_remote)
-
         if isinstance(result,bool):
             return False
-  
+        else:
+            print "host: %s finish soft install" % host_ip
+    
     return True
 
 
