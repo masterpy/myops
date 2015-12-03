@@ -47,7 +47,7 @@ function define_config()
 function python_tool_install()
 {
     mkdir -p /usr/local/tools/
-    rsync -auv houston.repos.sogou-inc.com::SRC/tools/vlan_client  /usr/local/tools/
+#    rsync -auv houston.repos.sogou-inc.com::SRC/tools/vlan_client  /usr/local/tools/
     rsync -auv houston.repos.sogou-inc.com::SRC/soft/  /usr/local/src/
 
     version=$(rpm -qa |grep python-2.7.9-1)

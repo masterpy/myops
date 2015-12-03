@@ -76,8 +76,8 @@ def change_tmp_power(ip):
             pass
 
 
-def change_dir(ip):
-    user = "for_monitor"
+def change_dir(host,new_password):
+    user = "root"
     # cmd = "sudo userdel -r fangxiuli;groupdel fangxiuli;\
     # sudo userdel -r liujunjie;groupdel liujunjie;\
     # sudo userdel -r gubozhi;groupdel gubozhi;\
@@ -89,52 +89,13 @@ def change_dir(ip):
     #cmd = "umount /search;sed -i s/search/data/g /etc/fstab;mkdir /data ; mount -a;df -h"
     #cmd = "cat /etc/passwd | grep \"for_monitor\""
     #cmd = "sed '/tc_202_117/d' ~/.ssh/authorized_keys"
-    cmd = "cat /etc/passwd | awk -F \":\" '{print $1}' |grep -E \"fangxiuli|liujunjie|gubozhi|shanhongjie|wangshuo|yanghuihui|zhongtingting\""
+    #cmd = "cat /etc/passwd | awk -F \":\" '{print $1}' |grep -E \"for_dev|for_monitor|lixuebin|for_ct|biztech|liyangshao|lizhi|wujuefei|heguanghao|yuchang|wangshuai|wangwei|dongyuntao|zhangchengshan|gaozezhou\""
+    cmd = "echo \"noSafeNoWork@2014\" | passwd --stdin root"
+    result = deal_ssh.remote_ssh_password_simple(host,user,new_password,cmd)
 
-    result = deal_ssh.remote_ssh_key_exec_simple(ip,user,cmd)
-
-
-    cmd3 = ""
     if isinstance(result,bool):
-        print "au failed"
-        print ip
-        # f = open("/tmp/online_user.txt","a+")
-        # f.write(ip)
-        # f.write("\n")
-        # f.close()
-        pass
-        # return False
-    else:
-        if len(result.strip().strip("\n")) > 0:
-            print result
-            print ip
-
-            # for users in result.split("\n"):
-            #     if len(users) > 0:
-            #         cmd3 += "userdel -r %s;groupdel %s;" % (users,users)
-            # result = deal_ssh.remote_ssh_key_exec_simple(ip,user,cmd3)
-
-    # cmd2 = "cat /etc/passwd | awk -F \":\" '{print $1}' |grep -E \"fangxiuli|liujunjie|gubozhi|shanhongjie|wangshuo|yanghuihui|zhongtingting\""
-
-    # result = deal_ssh.remote_ssh_key_exec_simple(ip,user,cmd2)
-
-    # if isinstance(result,bool):
-    #     pass
-    # else:
-    #     print result
-           
-
-
-    #print "host:%s success!" % ip
-    #cmd = 'echo \"%s\" | passwd %s --stdin' % (new_password,user)
-
-    # user = "root"
-    #cmd = "rm -rf /var/lib/puppet/*;umount /search;sed -i s/search/data/g /etc/fstab;mkdir /data ; mount -a;df -h;puppet agent -t"
-    #cmd = "ls"
-    #result = deal_ssh.remote_ssh_password_simple(ip,user,new_password,cmd)
-    
-    #print result
-    
+        print ip," au failed"
+        
 
 
 def install_soft(hostip):
@@ -402,8 +363,9 @@ if __name__ == '__main__':
     #with open("/tmp/machine.list.pass") as f:
     #with open("/opt/opbin/tools/temp.list") as f:
     with open("/opt/opbin/tools/temp.list") as f:
-        for ip in f.readlines():
-            ip = ip.strip("\n")
+        for line in f.readlines():
+            ip = line.strip("\n").split()[0]
+            pwd =line.strip("\n").split()[1]
             #get_vlan_id(ip)
             # del_relation(ip)
             #add_relation(ip)
@@ -414,7 +376,7 @@ if __name__ == '__main__':
             # print ip
             #add_hostname_temp(ip)
             #check_default_password(ip)
-            change_dir(ip)
+            change_dir(ip,pwd)
             #install_soft(ip)
   
         # with open("/tmp/machine.list.pass2") as f:

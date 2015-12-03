@@ -31,10 +31,27 @@ class Deal_Pm_Disk_Info(Init_Base):
             sql = "select disk_type,disk_size FROM `disk_info` where server_busi_ip = (select host_busi_ip from server_info where host_busi_ip = '%s' or host_data_ip = '%s') and disk_type = '%s' GROUP BY disk_size;"
 
             disk_data_result = super(Deal_Pm_Disk_Info, self).select_with_desc(sql,host_ip,host_ip,data_disk_type)
+            if len(disk_data_result) > 0:
+                if  disk_data_result[0]['disk_size'][-2:-1] == disk_data_result[1]['disk_size'][-2:-1] == 'G':
+                    if int(round(float(disk_data_result[0]['disk_size'][:-2]))) > int(round(float(disk_data_result[1]['disk_size'][:-2]))):
+                        data_disk_num = int(round(float(disk_data_result[0]['disk_size'][:-2])))
+                    else:
+                        data_disk_num = int(round(float(disk_data_result[1]['disk_size'][:-2])))
 
-            data_disk_num = int(round(float(disk_data_result[0]['disk_size'][:-2])))
-            data_disk_cell = disk_data_result[0]['disk_size'][-2:-1]
-            data_disk_size = str(data_disk_num) + data_disk_cell
+                    data_disk_cell = disk_data_result[0]['disk_size'][-2:-1]
+                    data_disk_size = str(data_disk_num) + data_disk_cell
+                elif disk_data_result[0]['disk_size'][-2:-1] == 'T':
+                    data_disk_num = int(round(float(disk_data_result[0]['disk_size'][:-2])))*1024
+                    data_disk_cell = 'G'
+                    data_disk_size = str(data_disk_num) + data_disk_cell
+                elif disk_data_result[1]['disk_size'][-2:-1] == 'T':
+                    data_disk_num = int(round(float(disk_data_result[1]['disk_size'][:-2])))*1024
+                    data_disk_cell = 'G'
+                    data_disk_size = str(data_disk_num) + data_disk_cell
+            else:
+                data_disk_num = int(round(float(disk_data_result[0]['disk_size'][:-2])))
+                data_disk_cell = disk_data_result[0]['disk_size'][-2:-1]
+                data_disk_size = str(data_disk_num) + data_disk_cell
 
             sql = "update pm_partition_rule set data_one_disk_size = '%s' where type = '%s'"
 
