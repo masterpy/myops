@@ -270,7 +270,7 @@ def del_relation_server(init_server_info):
     '''
         删除信任关系
     '''
-    command = "sed -i 's/root@tc_202_117//g' /root/.ssh/authorized_keys"
+    command = "sed -i '/root@tc_202_117/d' /root/.ssh/authorized_keys"
     result,error = deal_ssh.remote_ssh_password_exec(init_server_info,command)
     if result == "wrong":
         print "删除key OP_KEY 失败."
