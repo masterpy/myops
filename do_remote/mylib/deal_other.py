@@ -37,7 +37,6 @@ class Tools_cls(object):
         hostname_list = []
 
         for host_ip in self.host_ip_list:
-            print host_ip
             if common_lib.get_idc_name(host_ip.strip()):
                 idcname,host_busi_ip,host_data_ip = common_lib.get_idc_name(host_ip)
             else:

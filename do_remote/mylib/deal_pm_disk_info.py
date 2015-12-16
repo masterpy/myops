@@ -4,7 +4,6 @@
 import deal_ssh,common_lib
 import re,sys,time
 from mylib.base import Init_Base
-import pprint
 
 class Deal_Pm_Disk_Info(Init_Base):
     '''
@@ -13,10 +12,32 @@ class Deal_Pm_Disk_Info(Init_Base):
     def __init__(self,init_server_info,db_server_info):
         super(Deal_Pm_Disk_Info,self).__init__(init_server_info,db_server_info)
 
+    def get_pm_info_disk_num(self,host_ip,package_type):
+        '''
+            更新磁盘数量，目前只支持DX,CX
+        ''' 
+        support_type = ['C3','D1','D2','D3','c3','d1','d2','d3']
+        if package_type in support_type:
+            sql = "select count(*) as disk_num,disk_type from disk_info where server_busi_ip in ( select host_busi_ip from server_info WHERE ( host_busi_ip = '%s' or host_data_ip = '%s')) GROUP BY disk_type"
+
+            disk_num_result = super(Deal_Pm_Disk_Info, self).select_with_desc(sql,host_ip,host_ip)
+            if len(disk_num_result) == 1:
+                disk_num = disk_num_result[0]['disk_num']
+                data_disk_num  = int(disk_num) - 2
+                sql = "update pm_partition_rule set disk_total = '%s',data_disk_num = '%s' where type = '%s'"
+                super(Deal_Pm_Disk_Info,self).update_advanced(sql,disk_num,data_disk_num,package_type)
+            else:
+                print "host: %s.disk num error.please check it" % host_ip
+                return False
+
+        else:
+            return
+
     def update_pm_info(self):
         '''
             更新pm_partition_rule表
         '''
+        
         for server_info in self.init_server_info: 
             host_ip = server_info['client_server']['client_ip']
             package_type = server_info['client_server']['server_package']
@@ -68,6 +89,7 @@ class Deal_Pm_Disk_Info(Init_Base):
             super(Deal_Pm_Disk_Info,self).update_advanced(sql,data_disk_size,package_type)
 
 
+
             if other_disk_type != 'NA':
                 sql = "select disk_type,disk_size FROM `disk_info` where server_busi_ip = (select host_busi_ip from server_info where host_busi_ip = '%s' or host_data_ip = '%s') and disk_type = '%s' GROUP BY disk_size;"
 
@@ -82,8 +104,5 @@ class Deal_Pm_Disk_Info(Init_Base):
 
                 super(Deal_Pm_Disk_Info,self).update_advanced(sql,other_disk_size,package_type)
 
-
-
-            
-            
+            self.get_pm_info_disk_num(host_ip,package_type)
            

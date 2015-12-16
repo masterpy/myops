@@ -209,6 +209,7 @@ def install_soft_programe(host_ip_list,machine_info):
     dst_file = "/usr/local/src/init_env.sh"
    
     for host_ip in  host_ip_list:
+        print host_ip
         deal_ssh.trans_file(host_ip,remote_user,remote_passwd,src_file,dst_file)
         cmd_remote = "bash %s" % (dst_file)
         result  = deal_ssh.remote_ssh_password_simple_online(host_ip,remote_user,remote_passwd,cmd_remote)

@@ -444,10 +444,11 @@ class Exec_partition_cls(Init_Base):
 
         str_sn = id_generator(12)
         
-        old_data_dir_flag="LABEL=data*"
+        old_data_dir_flag = "LABEL=data*"
+        old_mylog_flag = "LABEL=mylog*"
 
         new_mount_path = re.sub(r"/",r"\/",old_mount_path) 
-        cmd = "fuser -ck %(mount_path)s;umount %(old_mount_dir)s;sed -i '/%(new_mount_path)s/d' /etc/fstab;sed -i '/%(old_data_dir_flag)s/d' /etc/fstab;/bin/cp /etc/fstab /tmp/fstab.%(str_sn)s" % {'mount_path':old_mount_path,'str_sn':str_sn,'new_mount_path':new_mount_path,'old_mount_dir':old_mount_dir,'old_data_dir_flag':old_data_dir_flag}
+        cmd = "fuser -ck %(mount_path)s;umount %(old_mount_dir)s;sed -i '/%(new_mount_path)s/d' /etc/fstab;sed -i '/%(old_data_dir_flag)s/d' /etc/fstab;sed -i '/%(old_mylog_flag)s/d' /etc/fstab;/bin/cp /etc/fstab /tmp/fstab.%(str_sn)s" % {'mount_path':old_mount_path,'str_sn':str_sn,'new_mount_path':new_mount_path,'old_mount_dir':old_mount_dir,'old_data_dir_flag':old_data_dir_flag,'old_mylog_flag':old_mylog_flag}
 
         deal_ssh.remote_ssh_key_exec_simple_online(host_ip,self.remote_user,cmd)
         #return cmd
