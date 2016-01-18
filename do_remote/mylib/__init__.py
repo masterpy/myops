@@ -9,3 +9,6 @@ import deal_machine_status
 import deal_gerenal_config
 import deal_memory
 import deal_pm_disk_info
+import logger
+import deal_key_server_info
+import deal_gernal_password

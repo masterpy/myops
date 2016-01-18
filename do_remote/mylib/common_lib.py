@@ -6,6 +6,8 @@ from IPy import IP
 import deal_ssh
 import re
 import shlex
+import logger
+
 
 class Get_conf(ConfigParser):
     def __init__(self,config):
@@ -123,10 +125,9 @@ def get_system_hostname(host_info):
     result,error = deal_ssh.remote_ssh_key_exec(host_info,_command)
 
     if result == "wrong":
-        print "host: %s 获取hostname 失败." % host_info['client_server']['client_ip']
+        logger.write_log("host: %s 获取hostname 失败." % host_info['client_server']['client_ip'])
     else:
-        print "host: %s 获取hostname 成功." % host_info['client_server']['client_ip']
-
+        logger.write_log("host: %s 获取hostname 成功." % host_info['client_server']['client_ip'])
     return  result
 
 def get_adapter_mac(host_info):
@@ -195,30 +196,6 @@ def get_system_product(host_info):
     return  server_manufacturer,server_sn,product_name
 
 
-def install_soft_programe(host_ip_list,machine_info):
-    '''
-        安装软件
-    '''
-    remote_user = machine_info['client_user']
-    remote_passwd = machine_info['client_password']
-    remote_port = machine_info['client_port']
-
-    scripts_dir = os.path.join(os.path.split(os.path.dirname(__file__))[0],'scripts')
-    src_file = "%s/%s" % (scripts_dir,"init_env.sh")
-    
-    dst_file = "/usr/local/src/init_env.sh"
-   
-    for host_ip in  host_ip_list:
-        print host_ip
-        deal_ssh.trans_file(host_ip,remote_user,remote_passwd,src_file,dst_file)
-        cmd_remote = "bash %s" % (dst_file)
-        result  = deal_ssh.remote_ssh_password_simple_online(host_ip,remote_user,remote_passwd,cmd_remote)
-        if isinstance(result,bool):
-            return False
-        else:
-            print "host: %s finish soft install" % host_ip
-    
-    return True
 
 
 

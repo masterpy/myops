@@ -1,0 +1,31 @@
+machine: 
+  - 
+    server_ip: 10.134.72.22
+    server_type: pm
+    server_package: E1
+    use_default_raid: no
+    sys_raid: R1
+    sys_disk_num: 2
+    data_raid: R10
+    data_disk_num: 4
+    other_raid: R1
+    other_disk_num: 2
+    where_use: dev
+  - 
+    server_ip: 10.134.72.22
+    server_type: pm
+    server_package: E1
+    use_default_raid: yes
+    where_use: dev
+  - 
+    server_ip: 10.134.72.22
+    server_type: pm
+    server_package: E1
+    use_default_raid: yes
+    where_use: dev
+  - 
+    server_ip: 10.134.72.22
+    server_type: pm
+    server_package: E1
+    use_default_raid: yes
+    where_use: dev

@@ -10,7 +10,7 @@ import time,os,string,sys
 
 import pprint
 
-import deal_ssh,common_lib
+import deal_ssh,common_lib,logger
 import re
 
 BS = 32
@@ -56,7 +56,7 @@ class PassWorder(object):
         '''
             生成密码
         '''
-        def id_generator(size=6, chars=string.ascii_uppercase + string.digits+'!@#$%^&*()'):
+        def id_generator(size=6, chars=string.ascii_uppercase + string.digits+'!@%^&*()'):
             return ''.join(random.choice(chars) for _ in range(size))
 
         # if team == "dev":
@@ -81,8 +81,6 @@ class Control_key(Init_Base):
         '''
             添加信任关系
         '''
-        # BIZOP_KEY = '''from=\\"10.11.199.180,10.13.199.180\\",no-agent-forwarding,no-port-forwarding ssh-dss AAAAB3NzaC1kc3MAAACBAO+yhNAkOZbhvK+CTx1zn6C0CfabaoAZLd2P4OZBi1GR+5S3HUnn9DkfMFXWfvrTBgyUJYWzg76Ymp4hlsZFLV/TR0yhPdIPWYSqAXgerzhx8u3TxxPVpgXzGlXSV424a+6n5XzeQFfj59DvKV4Y1KZqIQNngVkxtDecq2j4SfVfAAAAFQD5YJHwbyzzoV1TUNkNSvZo81ZQ8QAAAIEA19htkFN3vxdrEF571Jt0ACxFBx4xwsrrcbsyrPvJdqxhM85X6EREepIAGs5ronv2y//09WDs/APpoGU/jHwEdhBqXDUJehRzqEbLuY44hLk/DqWiXcrS4mkILqEWqsd5KDG6P1YwG5ezRslf9mrfi9zkGpPmNNATbkB7IMiCvDYAAACBAJcDObyRlj11hBvykYvdA3MU5ywRI8I8w+ldLSoYD3gZ7jVM+dF7H1x5uJFdbi2rXbceJfwABBVQwCh/yamgh+QfjgMoFeJ3/famFd8kqNsw8Y34s4eAVUVv/Xus6KX3OTIiqJjeD1T3pxYKCRLfuATuDSGQAmNhfMikj68w/JGz root@tc_202_117'''
-        
         BIZOP_KEY = '''ssh-dss AAAAB3NzaC1kc3MAAACBAO+yhNAkOZbhvK+CTx1zn6C0CfabaoAZLd2P4OZBi1GR+5S3HUnn9DkfMFXWfvrTBgyUJYWzg76Ymp4hlsZFLV/TR0yhPdIPWYSqAXgerzhx8u3TxxPVpgXzGlXSV424a+6n5XzeQFfj59DvKV4Y1KZqIQNngVkxtDecq2j4SfVfAAAAFQD5YJHwbyzzoV1TUNkNSvZo81ZQ8QAAAIEA19htkFN3vxdrEF571Jt0ACxFBx4xwsrrcbsyrPvJdqxhM85X6EREepIAGs5ronv2y//09WDs/APpoGU/jHwEdhBqXDUJehRzqEbLuY44hLk/DqWiXcrS4mkILqEWqsd5KDG6P1YwG5ezRslf9mrfi9zkGpPmNNATbkB7IMiCvDYAAACBAJcDObyRlj11hBvykYvdA3MU5ywRI8I8w+ldLSoYD3gZ7jVM+dF7H1x5uJFdbi2rXbceJfwABBVQwCh/yamgh+QfjgMoFeJ3/famFd8kqNsw8Y34s4eAVUVv/Xus6KX3OTIiqJjeD1T3pxYKCRLfuATuDSGQAmNhfMikj68w/JGz root@tc_202_117'''
 
         OP_KEY = '''from=\\"10.147.239.235,10.137.239.235,10.146.239.235,10.136.239.235,10.147.239.1,10.137.239.1,10.146.239.1,10.136.239.1\\",no-agent-forwarding,no-port-forwarding ssh-dss AAAAB3NzaC1kc3MAAACBAPx3767ksyO+E+L6fmIKJ+2Uq6yyyk3F83DQ2J+BLZgkzJG6K9FaoFLJQa+iLu3eL9ik+8/oNYcv96dL4M7tZRrQy0swBzIRlEhVRSMN7Ptiu+2TfNfgujA4PVPIvjPqVcbal1frEIy7VHQHSuVMwMI/6edd6J9FAo9CPHnsIlSdAAAAFQCFzOzFUZyUP9cOD+ubopSb+j3z0wAAAIBYXQOIRHmxk0hlwh13seetRtrkNYp1QGkaSLu8KvSr3cmGAUSndqxPVgvL5xT/C3S+sABB4H5KGpxlqTmqNn2MWM+oX4HBmsKXzslxIp0tlwqUE4DWaNvCEiKBqEBnWM+QTlSZ5C0kTJl+Os4rfEYC46R0bhHhYxc6NnpNyYv6JwAAAIBktn02O6k+Tg6CwN1RcG+RMZcqwZaUJ/kgDha3Ho9CZCcC5mNiC36M1qGW0J47RoEe5vSAsTitBgyr3pPEZp5+pnJjaXVo3uRWVtsAodDoWG0dOqYEIeX03VqrFQrt3SBsezPrpKoxZgItSbR6XnkK42iSrgk/f6Eyd3ckbh5a7Q== root@tc_239_235'''
@@ -93,17 +91,17 @@ class Control_key(Init_Base):
             result,error = deal_ssh.remote_ssh_password_exec(init_server_info,command)
 
             if result == "wrong":
-                print "%s 添加key BIZOP_KEY 失败." % init_server_info['client_server']['client_ip']
+                logger.write_log("%s 添加key BIZOP_KEY 失败." % init_server_info['client_server']['client_ip'])
             else:
-                print "%s 添加key BIZOP_KEY 成功." % init_server_info['client_server']['client_ip']
+                logger.write_log("%s 添加key BIZOP_KEY 成功." % init_server_info['client_server']['client_ip'])
 
             command = "echo %s >> /root/.ssh/authorized_keys" % OP_KEY
             result,error = deal_ssh.remote_ssh_password_exec(init_server_info,command)
 
             if result == "wrong":
-                print "%s 添加key OP_KEY 失败." % init_server_info['client_server']['client_ip']
+                logger.write_log("%s 添加key OP_KEY 失败." % init_server_info['client_server']['client_ip'])
             else:
-                print "%s 添加key OP_KEY 成功." % init_server_info['client_server']['client_ip']
+                logger.write_log("%s 添加key OP_KEY 成功." % init_server_info['client_server']['client_ip'])
 
 
 
@@ -126,16 +124,17 @@ class Control_key(Init_Base):
         result,error = deal_ssh.remote_ssh_key_exec(server_info,_command)
 
         if result == "wrong":
-            print "%s change password failed." %  server_info['client_server']['client_ip']
+            logger.write_log("%s change password failed." %  server_info['client_server']['client_ip'])
             return False
         else:
-            f = open('/tmp/machine.list.pass','a+')
-            f.write(server_info['client_server']['client_ip'])
-            f.write(",")
-            f.write(new_password)
-            f.write("\n")
-            f.close()
-            print "%s change password sucess."  % server_info['client_server']['client_ip']
+            # f = open('/tmp/machine.list.pass','a+')
+            # f.write(server_info['client_server']['client_ip'])
+            # f.write(",")
+            # f.write(new_password)
+            # f.write("\n")
+            # f.close()
+            # print "%s change password sucess."  % server_info['client_server']['client_ip']
+            logger.write_log("%s change password sucess."  % server_info['client_server']['client_ip'])
             return True
 
     def set_server_status(self):
@@ -152,28 +151,23 @@ class Control_key(Init_Base):
 
         for server_info in self.init_server_info:
             temp_dic = server_info['client_server'].copy()
-            new_password = password_cls.gernal_password(temp_dic['group'])
-            temp_dic['new_password'] = new_password
-            self.change_server_password(new_password,server_info)
-            
             relase = common_lib.get_system_release(server_info)
             hostname = common_lib.get_system_hostname(server_info)
 
             if common_lib.get_idc_name(temp_dic['client_ip']):
                 idcname,host_busi_ip,host_data_ip = common_lib.get_idc_name(temp_dic['client_ip'])
             else:
-                print "get_idc_name failed."
+                logger.write_log("get_idc_name failed.")
             
             if common_lib.get_adapter_mac(server_info):
                 eth0_mac,eth1_mac,eth2_mac,eth3_mac = common_lib.get_adapter_mac(server_info)
             else:
-                print "get_adapter_mac failed."
+                logger.write_log("get_adapter_mac failed.")
 
             if common_lib.get_system_product(server_info):
                 server_manufacturer,server_sn,product_name = common_lib.get_system_product(server_info)
             else:
-                print "get_system_product failed."
-
+                logger.write_log("get_system_product failed.")
 
             temp_dic['client_hostname'] = hostname
             temp_dic['client_relase'] = relase
@@ -233,7 +227,7 @@ class Control_key(Init_Base):
             保存服务器状态信息
         '''
         server_type  = client_info['machine_type']
-        new_password = client_info['new_password']
+        new_password = ""
         host_data_ip = client_info['host_data_ip']
         host_busi_ip = client_info['host_busi_ip']
         eth0_mac = client_info['eth0_mac']
@@ -273,6 +267,6 @@ def del_relation_server(init_server_info):
     command = "sed -i '/root@tc_202_117/d' /root/.ssh/authorized_keys"
     result,error = deal_ssh.remote_ssh_password_exec(init_server_info,command)
     if result == "wrong":
-        print "删除key OP_KEY 失败."
+        logger.write_log("删除key BIZOP_KEY 失败.")
     else:
-        print "删除key OP_KEY 成功"
+        logger.write_log("删除key BIZOP_KEY 成功")

@@ -1,8 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import deal_ssh,common_lib
-import re,sys,time
+import common_lib
+import re,sys,time,logger
 from mylib.base import Init_Base
 import pprint
 
@@ -10,26 +10,28 @@ class Deal_Raid_info(Init_Base):
     '''
         单独处理 raid信息类，依据配置重新配置raid
     '''
-    def __init__(self,init_server_info,db_server_info):
-        super(Deal_Raid_info, self).__init__(init_server_info,db_server_info)
-        
+    def __init__(self,db_server_info,host_ip,ssh_con):
+        super(Deal_Raid_info, self).__init__(db_server_info)
+        self.host_ip = host_ip
+        self.ssh_con = ssh_con
+
     def check_tool_file(self):
         '''
             检查硬盘工具是否存在
         '''
         test_filename_command = "test -f /opt/MegaRAID/MegaCli/MegaCli64 && echo \"success\""
-        for server_info in self.init_server_info:
-            result,error = deal_ssh.remote_ssh_key_exec(server_info,test_filename_command)
-            if result == "wrong":
-                print error
-                return False
-            elif result == "":
-                print "MegaCli64 is not exsit."
-                return False
-            else:
-                pass
+    
+        result,error = self.ssh_con.do_remote_by_passwd_exec(test_filename_command)
+        if result == "wrong":
+            logger.write_log("%s %s" % (self.host_ip,error))
+            return False
+        elif result == "":
+            logger.write_log("host:%s MegaCli64 is not exsit." % self.host_ip)
+            return False
+        else:
+            return True 
         
-        return True 
+        
 
     def get_disk_info(self):
         '''
@@ -63,62 +65,60 @@ class Deal_Raid_info(Init_Base):
         pd_blocks_list,ld_blocks_list = [],[]
 
         
-        for server_info in self.init_server_info:
-            result,error = deal_ssh.remote_ssh_key_exec(server_info,cmd)
-            client_ip = server_info['client_server']['client_ip']
-            
-            if result == "wrong":
-                print error
-                return False
+        result,error = self.ssh_con.do_remote_by_passwd_exec(cmd)
+        
+        if result == "wrong":
+            logger.write_log("host:%s detail:%s" % (self.host_ip,error))
+            return False
 
-            if len(result) == 0:
-                print "no raid info"
-                return False
+        if len(result) == 0:
+            logger.write_log("host:%s no raid info" % self.host_ip)
+            return False
             
-            #过滤块信息
-            for line in result.split("\n"):
+        #过滤块信息
+        for line in result.split("\n"):
+            if ld_begin.match(line):
+                key = line.split()[2]
+
+            if new_ld_block:
+                if ld_end.match(line):
+                    ld_block += line + "\n"
+                    ld_blocks_list.append(ld_block)
+                    new_ld_block = False
+                    ld_block = ''
+                else:
+                    ld_block += line + "\n"
+
+            else:
                 if ld_begin.match(line):
-                    key = line.split()[2]
+                    new_ld_block = True
+                    ld_block += line + "\n"
 
-                if new_ld_block:
-                    if ld_end.match(line):
-                        ld_block += line + "\n"
-                        ld_blocks_list.append(ld_block)
-                        new_ld_block = False
-                        ld_block = ''
-                    else:
-                        ld_block += line + "\n"
 
+            if new_pd_block:
+                if pd_end.match(line):
+                    pd_block += line + "\n"
+                    pd_blocks[key] = pd_block
+                    pd_blocks_list.append(pd_blocks)
+                    new_pd_block = False
+                    pd_block = ''
+                    pd_blocks = {}
                 else:
-                    if ld_begin.match(line):
-                        new_ld_block = True
-                        ld_block += line + "\n"
+                    pd_block += line + "\n"
 
+            else:
+                if pd_begin.match(line):
+                    new_pd_block = True
+                    pd_block += line + "\n"
 
-                if new_pd_block:
-                    if pd_end.match(line):
-                        pd_block += line + "\n"
-                        pd_blocks[key] = pd_block
-                        pd_blocks_list.append(pd_blocks)
-                        new_pd_block = False
-                        pd_block = ''
-                        pd_blocks = {}
-                    else:
-                        pd_block += line + "\n"
+        disk_data,raid_data = self.deal_disk_info(ld_blocks_list,pd_blocks_list)
+        ld_blocks_list = []
+        pd_blocks_list = []
 
-                else:
-                    if pd_begin.match(line):
-                        new_pd_block = True
-                        pd_block += line + "\n"
-
-            disk_data,raid_data = self.deal_disk_info(client_ip,ld_blocks_list,pd_blocks_list)
-            ld_blocks_list = []
-            pd_blocks_list = []
-
-            if not disk_data:
-                print "%s server collect raid info failed",client_ip
-                continue
-            self.update_server_raidinfo(disk_data,raid_data)
+        if not disk_data:
+            logger.write_log("host:%s server collect raid info failed" % self.host_ip)
+            return False
+        self.update_server_raidinfo(disk_data,raid_data)
 
     def update_server_raidinfo(self,disk_data,raid_data):
         '''
@@ -187,16 +187,16 @@ class Deal_Raid_info(Init_Base):
 
 
 
-    def deal_disk_info(self,client_ip,ld_blocks_list,pd_blocks_list):
+    def deal_disk_info(self,ld_blocks_list,pd_blocks_list):
         '''
             保存raid和磁盘信息，不做重新raid等处理
         '''
         if len(ld_blocks_list) == 0:
-            print "ld_blocks_list no data"
+            logger.write_log("host: %s,ld_blocks_list no data" % self.host_ip)
             return False,False
 
         if len(pd_blocks_list) == 0:
-            print "pd_blocks_list no data"        
+            logger.write_log("host: %s,pd_blocks_list no data" % self.host_ip)
             return False,False
 
 
@@ -206,10 +206,10 @@ class Deal_Raid_info(Init_Base):
         disk_list = []
         raid_info,disk_info = {},{}
 
-        if common_lib.get_idc_name(client_ip.strip()):
-            idcname,host_busi_ip,host_data_ip = common_lib.get_idc_name(client_ip)
+        if common_lib.get_idc_name(self.host_ip.strip()):
+            idcname,host_busi_ip,host_data_ip = common_lib.get_idc_name(self.host_ip)
         else:
-            print "get_idc_name failed."
+            logger.write_log("host: %s,get_idc_name failed." % self.host_ip)
 
         client_ip = host_busi_ip
 
@@ -284,16 +284,16 @@ class Deal_Raid_info(Init_Base):
         return result
 
 
-    def  clean_raid(self,host_busi_ip,disk_type,raid_info):
+    def  clean_raid(self,disk_type,raid_info):
         '''
             清理raid
             raid_info：排除对立的raid信息
         '''
         import itertools
         str_num = ""
-        sql = "select virtual_group from disk_info where server_busi_ip = '%s' and virtual_group != 0 and disk_type = '%s' and raid_info != '%s'" 
+        sql = "select virtual_group from disk_info where server_busi_ip in (select host_busi_ip from server_info where host_busi_ip = '%s' or host_data_ip = '%s') and virtual_group != 0 and disk_type = '%s' and raid_info != '%s'" 
 
-        result= super(Deal_Raid_info,self).select_advanced(sql,host_busi_ip,disk_type,raid_info)
+        result= super(Deal_Raid_info,self).select_advanced(sql,self.host_ip,self.host_ip,disk_type,raid_info)
 
         if len(result) > 0: 
             
@@ -302,27 +302,28 @@ class Deal_Raid_info(Init_Base):
                 level = "-L%s" % num
                 cmd = "/opt/MegaRAID/MegaCli/MegaCli64 -CfgLdDel %s -force -a0" % level
 
-                deal_ssh.remote_ssh_key_exec_simple(host_busi_ip,'root',cmd)
+                self.ssh_con.do_remote_by_passwd_exec(cmd)
                 str_num = num + "," + str_num
 
-            sql = "delete from disk_info where server_busi_ip = '%s' and virtual_group IN (%s)" 
-            super(Deal_Raid_info,self).delete(sql,host_busi_ip,str_num[:-1])
+            sql = "delete from disk_info where server_busi_ip in (select host_busi_ip from server_info where host_busi_ip = '%s' or host_data_ip = '%s') and virtual_group IN (%s)" 
+
+            super(Deal_Raid_info,self).delete(sql,self.host_ip,self.host_ip,str_num[:-1])
 
 
 
-    def check_raid_info(self,host_busi_ip,disk_num,disk_type,raid_info):
+    def check_raid_info(self,disk_num,disk_type,raid_info):
         '''
             检查raid
 
         '''
         result = ""
-        sql = '''select * from (select disk_type,COUNT(virtual_group) AS disk_num from disk_info where server_busi_ip = '%s' and raid_info = '%s' and virtual_group != 0 GROUP BY virtual_group) as new_table where new_table.disk_num = %s and disk_type = '%s' '''
+        sql = '''select * from (select disk_type,COUNT(virtual_group) AS disk_num from disk_info where server_busi_ip in (select host_busi_ip from server_info where host_busi_ip = '%s' or host_data_ip = '%s') and raid_info = '%s' and virtual_group != 0 GROUP BY virtual_group) as new_table where new_table.disk_num = %s and disk_type = '%s' '''
 
-        result= super(Deal_Raid_info,self).select_advanced(sql,host_busi_ip,raid_info,disk_num,disk_type)
+        result= super(Deal_Raid_info,self).select_advanced(sql,self.host_ip,self.host_ip,raid_info,disk_num,disk_type)
 
         return result
 
-    def do_deal_raid(self,host_busi_ip,host_disk_num,host_raid_info):
+    def do_deal_raid(self,host_disk_num,host_raid_info):
         '''
             重做raid
         '''
@@ -341,14 +342,16 @@ class Deal_Raid_info(Init_Base):
 
         cmd = "/usr/local/sbin/sogou-raid -t create -r %s -n %s" % (r_info,host_disk_num)
 
-        result = deal_ssh.remote_ssh_key_exec_simple(host_busi_ip,'root',cmd)
-        if result:
-            print "host: %s,do raid sucess!" % host_busi_ip
+        result,error = self.ssh_con.do_remote_by_passwd_exec(cmd)
+
+        if result == "wrong":
+            logger.write_log("host: %s,do raid failed! detail: %s" % (self.host_ip,error))
+            return False
+        else:
             return True
 
 
-
-    def  set_disk_info(self):
+    def  set_disk_info(self,use_default_raid,server_package):
         '''
             处理分区信息，依据类型和数量
         '''
@@ -361,49 +364,44 @@ class Deal_Raid_info(Init_Base):
 
         do_server_raid_dic = {}
 
-        for server_info in self.init_server_info:
-            client_ip = server_info['client_server']['client_ip']
-            use_default_raid = server_info['client_server']['use_default_raid']
-            server_package   =  server_info['client_server']['server_package']
-            #按照默认格式
-            if use_default_raid == 'yes':
+        #按照默认格式
+        if use_default_raid == 'yes':
+            sql = "select host_busi_ip,server_status from server_info where host_data_ip = '%s' or host_busi_ip = '%s'"
 
-                sql = "select host_busi_ip,server_status from server_info where host_data_ip = '%s' or host_busi_ip = '%s'"
+            #查询服务器的业务网ip和服务器的可分配状态
+            result = super(Deal_Raid_info,self).select_advanced(sql,self.host_ip,self.host_ip)
+            
+            if len(result) > 0:
+                host_busi_ip = result[0][0]
+                server_status = result[0][1]
+            
+            if server_status != 1 or len(result) == 0:
 
-                #查询服务器的业务网ip和服务器的可分配状态
-                result = super(Deal_Raid_info,self).select_advanced(sql,client_ip,client_ip)
+                result4data = self.get_db_raid_info("data",server_package)
+                result4other = self.get_db_raid_info("other",server_package)
                 
-                if len(result) > 0:
-                    host_busi_ip = result[0][0]
-                    server_status = result[0][1]
+                #disk_num-->result4data[0][0]
+                #disk_type-->result4data[0][1]
+                #raid_info-->result4data[0][2]
+
+
+                check4data = self.check_raid_info(result4data[0][0],result4data[0][1],result4data[0][2])
+
+
+                check4other = self.check_raid_info(result4other[0][0],result4other[0][1],result4other[0][2])
+
+
+                #由于只能同类型做raid,所以先做other后做data
+                if len(check4other) != 1:
+                    self.clean_raid(result4other[0][1],result4data[0][2])
+                    if self.do_deal_raid(result4other[0][0],result4other[0][2]):
+                       do_other_raid = True
+
+                if len(check4data) != 1:
+                    self.clean_raid(result4data[0][1],result4other[0][2])
+                    if self.do_deal_raid(result4data[0][0],result4data[0][2]):
+                       do_data_raid = True
                 
-                if server_status != 1 or len(result) == 0:
-
-                    result4data = self.get_db_raid_info("data",server_package)
-                    result4other = self.get_db_raid_info("other",server_package)
-                    
-                    #disk_num-->result4data[0][0]
-                    #disk_type-->result4data[0][1]
-                    #raid_info-->result4data[0][2]
-
-
-                    check4data = self.check_raid_info(host_busi_ip,result4data[0][0],result4data[0][1],result4data[0][2])
-
-
-                    check4other = self.check_raid_info(host_busi_ip,result4other[0][0],result4other[0][1],result4other[0][2])
-
-
-                    #由于只能同类型做raid,所以先做other后做data
-                    if len(check4other) != 1:
-                        self.clean_raid(host_busi_ip,result4other[0][1],result4data[0][2])
-                        if self.do_deal_raid(host_busi_ip,result4other[0][0],result4other[0][2]):
-                           do_other_raid = True
-
-                    if len(check4data) != 1:
-                        self.clean_raid(host_busi_ip,result4data[0][1],result4other[0][2])
-                        if self.do_deal_raid(host_busi_ip,result4data[0][0],result4data[0][2]):
-                           do_data_raid = True
-                    
 
 
 

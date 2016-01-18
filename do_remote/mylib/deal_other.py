@@ -1,7 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-from mysql_cls import MysqlPython
-import deal_ssh,common_lib
+import deal_ssh,common_lib,logger
 import StringIO
 import re,sys,time,string
 import pprint 
@@ -40,13 +39,16 @@ class Tools_cls(object):
             if common_lib.get_idc_name(host_ip.strip()):
                 idcname,host_busi_ip,host_data_ip = common_lib.get_idc_name(host_ip)
             else:
-                return {'status': "failed",'msg':"%s  host: %s,get_idc_name failed." % (time.strftime("%Y-%m-%d %H:%M",time.localtime()),host_ip)}
+                logger.write_log("host: %s,get_idc_name failed." % host_ip)
+                return False
 
             #hostname信息
             result  = deal_ssh.remote_ssh_password_simple_online(host_ip,remote_user,remote_passwd,look_network_cmd)
             
             if isinstance(result,bool):
-                return {'status': "failed",'msg':"%s  host: %s,get host info failed." % (time.strftime("%Y-%m-%d %H:%M",time.localtime()),host_ip)}
+                logger.write_log("host: %s,get host info failed." % host_ip)
+                return False
+
 
             buf = StringIO.StringIO(result)
             for line in buf.readlines():
@@ -60,7 +62,9 @@ class Tools_cls(object):
             result  = deal_ssh.remote_ssh_password_simple_online(host_ip,remote_user,remote_passwd,look_hosts_cmd)
             
             if isinstance(result,bool):
-                return {'status': "failed",'msg':"%s  host: %s,get host info failed." % (time.strftime("%Y-%m-%d %H:%M",time.localtime()),host_ip)}
+                logger.write_log("host: %s,get host info failed." % host_ip)
+                return False
+
 
             buf = StringIO.StringIO(result)
             for line in buf.readlines():
@@ -102,30 +106,8 @@ class Tools_cls(object):
             result = stdout.read()
             error  = stderr.read()
         except Exception,e:
-            print "host: %s,%s" % (host,e)
+            logger.write_log("host: %s,%s" % (host,e))
             return False
         else:
             return True
     
-
-    def check_404_user(self,ip):
-        '''
-            检查用户
-        '''
-        result = ""
-        user = "for_monitor"
-        cmd = "cat /etc/passwd  | grep -E \"wangshuai|lixuebin\" | cut -d \":\" -f1"
-        result = deal_ssh.remote_ssh_key_exec_simple(ip,user,cmd)
-        print ip
-        print result
-
-        if result:
-            f = open('/tmp/404.list','a+')
-            f.write(ip)
-            f.write("\n")
-            f.write(result)
-            f.write("\n")
-            f.write("%s" % "="*20)
-            f.write("\n")
-            f.close()
-

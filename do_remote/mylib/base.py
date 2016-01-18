@@ -16,8 +16,8 @@ class Init_Base(object):
     __session    = None
     __connection = None
 
-    def __init__(self,init_server_info,db_server_info):
-        self.init_server_info = init_server_info
+    def __init__(self,db_server_info):
+        #self.init_server_info = init_server_info
         self.__db_user = db_server_info['db_host_user']
         self.__db_host = db_server_info['db_host_ip']
         self.__db_port = int(db_server_info['db_host_port'])
@@ -198,7 +198,6 @@ class Init_Base(object):
         #import sys
         #print sql,args
         query = sql % args
-        #print query
         self.__open()
         self.__session.execute("SET NAMES utf8");
         self.__session.execute(query)
